@@ -5,6 +5,10 @@ from ophyd.areadetector import EpicsSignalWithRBV as SignalWithRBV, AreaDetector
 from ophyd.status import SubscriptionStatus
 import skimage
 
+import bluesky.preprocessors as bpp
+import bluesky.plan_stubs as bps
+from bluesky.plans import count
+from xpdacq.beamtime import _configure_area_det
 
 import datetime
 import os
@@ -48,6 +52,240 @@ def auto_name_file(filename_prefix, file_extension, directory=None):
 
 # file_path2 = auto_name_file("report", ".csv") # saves in current directory
 # print(f"File created at: {file_path2}")
+
+
+# shared by Milinda
+def measurement_data(temperature=False): # .......Captures metadata   
+    info_dict = {}
+    info_dict['OT_stage_1_X'] = OT_stage_1_X.read()
+    info_dict['OT_stage_1_Y'] = OT_stage_1_Y.read()
+    info_dict['Det_1_X'] = Det_1_X.read()
+    info_dict['Det_1_Y'] = Det_1_Y.read()
+    info_dict['Det_1_Z'] = Det_1_Z.read()
+    info_dict['Grid_X'] = Grid_X.read()
+    info_dict['Grid_Y'] = Grid_Y.read()
+    info_dict['Grid_Z'] = Grid_Z.read()
+    info_dict['ring_current'] = ring_current.read()
+    info_dict['frame_acq_time'] = glbl['frame_acq_time']
+    info_dict['dk_window'] = glbl['dk_window']
+    
+    if temperature:
+        info_dict['cryostat_A'] = lakeshore336.read()['lakeshore336_temp_A_T']['value']
+        info_dict['cryostat_A_V'] = caget('XF:28ID1-ES{LS336:1-Chan:A}Val:Sens-I')
+        info_dict['cryostat_B'] = lakeshore336.read()['lakeshore336_temp_B_T']['value']
+        info_dict['cryostat_B_V'] = caget('XF:28ID1-ES{LS336:1-Chan:B}Val:Sens-I')
+        info_dict['cryostat_C'] = lakeshore336.read()['lakeshore336_temp_C_T']['value']
+        info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
+        info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
+        info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
+        info_dict['Measurement_time'] = time.time()
+    
+    return info_dict
+
+
+
+def pdf_RE4(dets, exposure, extra_md={}):
+# def pdf_RE4(dets, exposure, areaDet_name='pe1c', metadata={}):
+    
+    """
+    Take one reading from area detector with given exposure time
+
+    Parameters
+    ----------
+    dets : list
+        list of 'readable' objects. default to area detector
+        linked to xpdAcq.
+    exposure : float
+        total time of exposrue in seconds
+
+    Notes
+    -----
+    area detector being triggered will  always be the one configured
+    in global state. To find out which these are, please using
+    following commands:
+
+        >>> xpd_configuration['area_det']
+
+    to see which device is being linked
+    """
+    
+    # # change detector in configuration to the given one
+    # if xpd_configuration["area_det"].name == areaDet_name:
+    #     pass
+    # else:
+    #     if areaDet_name == 'pe1c':
+    #         xpd_configuration["area_det"] = pe1c
+    #     elif areaDet_name == 'pe2c':
+    #         xpd_configuration["area_det"] = pe2c
+    #     elif areaDet_name == 'pilatus1':
+    #         xpd_configuration["area_det"] = pilatus1
+            
+    area_det = xpd_configuration["area_det"]       
+    
+    # TODO: check if _configure_area_det for pilatus
+    # setting up area_detector
+    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
+    
+    # update md
+    # md = extra_md
+    _md = ChainMap(
+        {
+            "sp_time_per_frame": acq_time,
+            "sp_num_frames": num_frame,
+            "sp_requested_exposure": exposure,
+            "sp_computed_exposure": computed_exposure,
+            "sp_type": "bps.trigger",
+            "sp_uid": str(uuid.uuid4()),
+            "sp_plan_name": "pdf_RE4",
+            "sp_detector": area_det.name, 
+            "detectors": [area_det.name],
+            # "data_keys": "pe1c_image", 
+        },
+    )
+    _md.update(extra_md)
+
+
+    det_x_pos = [40.644, 31.356, 36]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in extra_md.keys():
+        det_x_pos = extra_md['det_x_pos']
+
+    if 'det_y_pos' in extra_md.keys():
+        det_y_pos = extra_md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+
+    @bpp.stage_decorator([area_det]+motors)
+    @bpp.run_decorator(md=_md)
+    def pdf_RE_inner(area_det, det_x_pos=det_x_pos, det_y_pos=det_y_pos):
+        # _md = {'detectors':[det.name]}
+        # _md.update(md or {})
+        
+        def trigger_det(stream_name):
+            ret = {}
+            yield from bps.trigger(area_det, wait=True)
+            yield from bps.create(name=stream_name)
+            reading = (yield from bps.read(area_det))
+            # print(f"reading = {reading}")
+            ret.update(reading)
+            yield from bps.save()
+
+        if area_det.name == 'pe1c':
+            yield from periodic_dark(trigger_det(f"PDF_{area_det.name}"))
+                
+        elif area_det.name == 'pilatus1':
+            # if det_x_pos==None and det_y_pos==None:
+            #     det_x_pos = [40.644, 31.356, 36]
+            #     det_y_pos = [-3.356, -12.644, -8]
+            # else:
+            #     pass
+            
+            for i in range(len(det_x_pos)):
+                # Grid_X.move(det_x[i])
+                # Grid_Y.move(det_y[i])
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from periodic_dark(trigger_det(f"PDF_{area_det.name}_{i}"))
+                    
+                
+    yield from pdf_RE_inner(area_det)
+
+
+
+
+# def pdf_pila(dets, exposure, extra_md={}, det_x_pos=None, det_y_pos=None, det_z_pos=None):
+# # def pdf_RE4(dets, exposure, areaDet_name='pe1c', metadata={}):
+    
+#     """
+#     Take three readings from pilatus1 with given exposure time
+
+#     Parameters
+#     ----------
+#     dets : list
+#         list of 'readable' objects. default to area detector
+#         linked to xpdAcq.
+#     exposure : float
+#         total time of exposrue in seconds
+
+#     Notes
+#     -----
+#     area detector being triggered will  always be the one configured
+#     in global state. To find out which these are, please using
+#     following commands:
+
+#         >>> xpd_configuration['area_det']
+
+#     to see which device is being linked
+#     """
+
+#     # Need to configure xpd_configuration to pilatus1 in bsui   
+#     area_det = xpd_configuration["area_det"]       
+    
+#     # TODO: check if _configure_area_det for pilatus
+#     # setting up area_detector
+#     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
+    
+#     # update md
+#     # md = extra_md
+#     _md = ChainMap(
+#         {
+#             "sp_time_per_frame": acq_time,
+#             "sp_num_frames": num_frame,
+#             "sp_requested_exposure": exposure,
+#             "sp_computed_exposure": computed_exposure,
+#             "sp_type": "bps.trigger",
+#             "sp_uid": str(uuid.uuid4()),
+#             "sp_plan_name": "pdf_RE4",
+#             "sp_detector": area_det.name, 
+#             "detectors": [area_det.name],
+#             # "data_keys": "pe1c_image", 
+#         },
+#     )
+#     _md.update(extra_md)
+
+#     if xpd_configuration["area_det"].name == 'pilatus1':
+#         pilatus_position = {"Grid_X": Grid_X.position, 
+#                             "Grid_Y": Grid_Y.position,
+#                             "Grid_Z": Grid_Z.position,
+#         }  
+
+#         _md.update(pilatus_position)
+    
+#     @bpp.stage_decorator([area_det])
+#     @bpp.run_decorator(md=_md)
+#     def pdf_RE_inner(area_det, det_x_pos=det_x_pos, det_y_pos=det_y_pos, det_z_pos=det_z_pos):
+#         # _md = {'detectors':[det.name]}
+#         # _md.update(md or {})
+        
+#         def trigger_det(stream_name):
+#             ret = {}
+#             yield from bps.trigger(area_det, wait=True)
+#             yield from bps.create(name=stream_name)
+#             reading = (yield from bps.read(area_det))
+#             # print(f"reading = {reading}")
+#             ret.update(reading)
+#             yield from bps.save()
+
+#         if area_det.name == 'pe1c':
+#             yield from periodic_dark(trigger_det(f"PDF_{area_det.name}"))
+                
+#         elif area_det.name == 'pilatus1':
+#             if det_x_pos==None and det_y_pos==None:
+#                 det_x_pos = [40.644, 31.356, 36]
+#                 det_y_pos = [-3.356, -12.644, -8]
+#             else:
+#                 pass
+            
+#             for i in range(len(det_x_pos)):
+#                 # Grid_X.move(det_x[i])
+#                 # Grid_Y.move(det_y[i])
+#                 yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+#                 yield from periodic_dark(trigger_det(f"PDF_{area_det.name}_{i}"))
+                    
+                
+#     yield from pdf_RE_inner(area_det)
+
+
 
 
 class Cam(AreaDetector):
@@ -195,6 +433,149 @@ def cam_BS_scan(det, md=None):
         ret.update(reading)
         yield from bps.save()
     yield from trigger_detector()
+
+
+
+
+def scan_shifter_saxs(
+    motor,
+    xmin,
+    xmax,
+    numx,
+    num_samples=0,
+    min_height=0.02,
+    min_dist=5,
+    peak_rad=1.5,
+    use_det=True,
+    abs_data = False,
+    oset_data = 0.0,
+    return_to_start = True,
+    recover_last_scan = False, 
+    use_pe2c = True, 
+):
+    def yn_question(q):
+        return input(q).lower().strip()[0] == "y"
+
+    init_pos = motor.position
+
+    print("")
+    if not recover_last_scan:
+        print("I'm going to move the motor: " + str(motor.name))
+        print("It's currently at position: " + str(motor.position))
+        move_coord = float(xmin) - float(motor.position)
+        if move_coord < 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm inboard from current location"
+            )
+        elif move_coord > 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm outboard from current location"
+            )
+        elif move_coord == 0:
+            print("I'm starting where I am right now :)")
+        else:
+            print("I confused")
+    
+        if not yn_question("Confirm scan? [y/n] "):
+            print("Aborting operation")
+            return None
+    
+        pos_list, I_list = _motor_move_scan_shifter_pos(
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx, use_pe2c=use_pe2c)
+    else:
+        print ('recovering last scan from redis...')
+        return_to_start = False
+        pos_list, I_list = retrieve_recent_shifter_scan()
+        plt.figure()
+        plt.plot(pos_list, I_list)
+
+    if len(pos_list) > 1:
+        delx = pos_list[1] - pos_list[0]
+    else:
+        print("only a single point? I'm gonna quit!")
+        return None
+
+    if return_to_start:
+        print ('returning to start position....')
+        motor.move(init_pos)
+
+
+    if oset_data != 0.0:
+        I_list = I_list - oset_data
+
+    if abs_data:
+        I_list = abs(I_list)
+
+    print("")
+    if not yn_question(
+        "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
+    ):
+        return pos_list, I_list
+    plt.close()
+
+    go_on = False
+    tmin_height = min_height
+    tmin_dist = min_dist
+    tpeak_rad = peak_rad
+    fit_attempts = 1
+
+    while not go_on:
+        print("\nI'm going to fit peaks with a min_height of " + str(tmin_height))
+        print(
+            "and min_dist [index values/real vals] of "
+            + str(tmin_dist)
+            + " / "
+            + str(tmin_dist * delx)
+        )
+        print("and I'll fit a radius between each peak-center of " + str(tpeak_rad))
+        if fit_attempts == 0:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+            )
+        else:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                open_new_plot=False,
+            )
+        fit_attempts += 1
+        # if yn_question("\nHappy with the fit? [y/n] ") == False:
+        if not go_on:
+            qans = input(
+                "\n1. Change min_height\n2. Change min_dist\n3. Change peak-fit rad\n0. Give up\n : "
+            )
+            try:
+                qans = int(qans)
+                if int(qans) == 1:
+                    tmin_height = float(input("\nWhat is the new min_height value? "))
+                if int(qans) == 2:
+                    tmin_dist = float(input("\nWhat is the new min_dist value? "))
+                if int(qans) == 3:
+                    tpeak_rad = float(input("\nWhat is the new peak_rad value? "))
+                if int(qans) == 0:
+                    print("ok, giving up")
+                    return None
+            except Exception:
+                print("what, what, whaaat?")
+        else:
+            print("Ok, great.")
+            go_on = True_motor_move_scan_shifter_pos
+
+    return peak_cen_list
+
 
 
 # data = np.reshape(Cam1.ArrayData.get(), (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(), Cam1.ArraySize0.get())
