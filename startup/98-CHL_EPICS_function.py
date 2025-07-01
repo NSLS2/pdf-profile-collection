@@ -55,7 +55,7 @@ def auto_name_file(filename_prefix, file_extension, directory=None):
 
 
 # shared by Milinda
-def measurement_data(temperature=False): # .......Captures metadata   
+def measurement_data(): # .......Captures metadata   
     info_dict = {}
     info_dict['OT_stage_1_X'] = OT_stage_1_X.read()
     info_dict['OT_stage_1_Y'] = OT_stage_1_Y.read()
@@ -69,16 +69,15 @@ def measurement_data(temperature=False): # .......Captures metadata
     info_dict['frame_acq_time'] = glbl['frame_acq_time']
     info_dict['dk_window'] = glbl['dk_window']
     
-    if temperature:
-        info_dict['cryostat_A'] = lakeshore336.read()['lakeshore336_temp_A_T']['value']
-        info_dict['cryostat_A_V'] = caget('XF:28ID1-ES{LS336:1-Chan:A}Val:Sens-I')
-        info_dict['cryostat_B'] = lakeshore336.read()['lakeshore336_temp_B_T']['value']
-        info_dict['cryostat_B_V'] = caget('XF:28ID1-ES{LS336:1-Chan:B}Val:Sens-I')
-        info_dict['cryostat_C'] = lakeshore336.read()['lakeshore336_temp_C_T']['value']
-        info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
-        info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
-        info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
-        info_dict['Measurement_time'] = time.time()
+    info_dict['cryostat_A'] = lakeshore336.read()['lakeshore336_temp_A_T']['value']
+    info_dict['cryostat_A_V'] = caget('XF:28ID1-ES{LS336:1-Chan:A}Val:Sens-I')
+    info_dict['cryostat_B'] = lakeshore336.read()['lakeshore336_temp_B_T']['value']
+    info_dict['cryostat_B_V'] = caget('XF:28ID1-ES{LS336:1-Chan:B}Val:Sens-I')
+    info_dict['cryostat_C'] = lakeshore336.read()['lakeshore336_temp_C_T']['value']
+    info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
+    info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
+    info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
+    info_dict['Measurement_time'] = time.time()
     
     return info_dict
 
