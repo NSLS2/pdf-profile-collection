@@ -46,7 +46,14 @@ class Eurotherm(EpicsSignalPositioner):
 	def set(self, *args, **kwargs):
 		return super().set(*args, timeout=100000, **kwargs)
 
+
 eurotherm = Eurotherm('XF:28ID1-ES:1{Env:04}T-I', write_pv='XF:28ID1-ES:1{Env:04}T-SP', tolerance = 1, name='eurotherm')
+### Eurotherm3504 and added by GK on May 14, 2025
+#eurotherm3504 = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:SP', name='eurotherm3504')
+#eurotherm3504_ramprate = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RR', name='eurotherm3504_ramprate')
+#eurotherm3504_temp = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RBV', name='eurotherm3504_temp')
+eurotherm3504 = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:PV:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:SP', name='eurotherm3504')
+eurotherm3504_ramprate = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RR:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:RR', name='eurotherm3504')
 
 class CryoStream(Device):
     # readback

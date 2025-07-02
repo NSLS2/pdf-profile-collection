@@ -24,10 +24,12 @@ def acquisition_plan(dets, motors, fs, sample_name, images_per_set=None):
 
         yield from bps.sleep(1)
         # close fast shutter, now take a dark
-        yield from bps.mov(fs,0)
+        # yield from bps.mov(fs,0)
+        yield from bps.mov(fb2.flt4, 0)
         yield from trigger_and_read(dets + motors, name='dark')
         # open fast shutter
-        yield from bps.mov(fs,1)
+        # yield from bps.mov(fs,1)
+        yield from bps.mov(fb2.flt4, 1)
         # for the motors, trigger() won't be called since it doesn't exist
         yield from trigger_and_read(dets + motors, name='primary')
         for det in dets:

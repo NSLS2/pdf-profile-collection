@@ -634,14 +634,18 @@ def _motor_move_scan_shifter_pos(motor, xmin, xmax, numx, use_pe2c=False):
     from epics import caget
     #ensure shutter is closedi
     print ('closing shutter')
-    RE(mv(fs,"Close"))
+    # RE(mv(fs,"Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
     I_list = np.zeros(numx)
     dx = (xmax - xmin) / numx
     pos_list = np.linspace(xmin, xmax, numx)
     print ('moving to starting postion')
     RE(mv(motor,pos_list[0]))
     print ('opening shutter')
-    RE(mv(fs, "Open"))
+    # RE(mv(fs, "Open"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 1))
     time.sleep(1)
     fig1, ax1 = plt.subplots()
     use_det = True
@@ -673,7 +677,9 @@ def _motor_move_scan_shifter_pos(motor, xmin, xmax, numx, use_pe2c=False):
 
     plt.plot(pos_list, I_list)
     # plt.close()
-    RE(mv(fs, "Close"))
+    # RE(mv(fs, "Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
     stow_recent_shifter_scan(pos_list, I_list)
     return pos_list, I_list
 

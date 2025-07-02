@@ -80,7 +80,8 @@ class PDFFastShutter(Device):
     def set(self, val):
         # NOTE: temporary workaround until the fast shutter works.
         #
-        def check_if_done(value, old_value, **kwargs):
+        def check_if_done(*, value, old_value, **kwargs):
+            print(f"{old_value=}  -> {value=}")
             if ((val in ['Open', 1] and value == 0) or
                 (val in ['Close', 0] and value == 1)):
                 if self.st is not None:
@@ -89,7 +90,7 @@ class PDFFastShutter(Device):
                 return True
             return False
         self.cmd.set(self.setmap[val])
-        status = SubscriptionStatus(self.status, check_if_done,settle_time=self.settle_time.get())
+        status = SubscriptionStatus(self.status, check_if_done, settle_time=self.settle_time.get())
         return status
 
         #ttime.sleep(1.0)  # wait to set the value since the status PV does not capture the actual status
@@ -107,7 +108,7 @@ class PDFFastShutter(Device):
     #     return self.set('Close')
 
 #temporary disable fast shutter while broken - DO 5/18/2022
-fs = PDFFastShutter('XF:28ID1B-OP{PSh:1-Det:2}', name='fs')
+# fs = PDFFastShutter('XF:28ID1B-OP{PSh:1-Det:2}', name='fs')
 #if enable this, need to disable fs in 12-motors: line 80
 
 class Mirror(Device):

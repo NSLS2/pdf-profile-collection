@@ -71,6 +71,10 @@ if xpdacq_version < (1, 1, 0):
     # insert header to db, either simulated or real
     xrun.subscribe(db.insert, 'all')
 
+    ## Added by CHL 2025/05/23
+    # We need to repeat it here for `xrun` as RE is not used here...
+    nslsii.configure_kafka_publisher(xrun, "pdf")
+
     if bt:
         xrun.beamtime = bt
 

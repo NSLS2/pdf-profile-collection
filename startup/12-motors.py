@@ -35,7 +35,8 @@ class OCMTable(Device):
 OCM_table = OCMTable('XF:28ID1B-ES{OCM-Ax:', name='OCM_table')
 
 ECS_tel_guide = EpicsMotor('XF:28ID1B-ES{ECS-Ax:X}Mtr', name='ECS_tel_guide')
-
+ECS_laser_Y = EpicsMotor('XF:28ID1B-ES{Lsr:1-Ax:Y}Mtr', name='ECS_laser_Y') # MA May 22, 2025
+ECS_reflective_foil_X = EpicsMotor('XF:28ID1B-ES{Foil:1-Ax:X}Mtr', name='ECS_reflective_foil_X') # MA May 22, 2025
 
 class ECS(Device):
     laser_y = Cpt(EpicsMotor, 'Lsr:1-Ax:Y}Mtr')
@@ -44,7 +45,6 @@ class ECS(Device):
     filter_wheel_2_phi = Cpt(EpicsMotor, 'Fltr:Whl2-Ax:Phi}Mtr')
 
 ECS_laser_foil_filter = ECS('XF:28ID1B-ES{', name='ECS_laser_foil_filter')
-
 
 class FilterBank(Device):
     flt1 = Cpt(EpicsSignal, '1}Cmd:Opn-Cmd', string=True)
@@ -87,9 +87,10 @@ class FilterBankTwoButtonShutter(Device):
 
 fb = FilterBank('XF:28ID1B-OP{Fltr:', name='fb')
 fb_two_button_shutters = FilterBankTwoButtonShutter('XF:28ID1B-OP{Fltr:', name='fb_two_button_shutters')
+fb2 = fb_two_button_shutters
 
 #trying to make a temporary shutter - DO - 5/18/2022
-#fs = fb_two_button_shutters.flt4
+fs = fb_two_button_shutters.flt4
 #if disable this, need to re-enable fs in 15-optics: line 105
 
 # Spinner Goniohead motors, add by HZ
@@ -102,6 +103,8 @@ Spinnergo_Ry = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Ry}Mtr', name='Spinnergo_Ry'
 
 Tomo_spinner = EpicsMotor('XF:28ID1B-ES{Smpl:Chngr-Ax:YRot}Mtr', name='Tomo_spinner', labels=['positiioners'])
 
+# Defined by CHLin on 2025/05/19
+Beam_pipe_X = EpicsMotor('XF:28ID1B-ES{Stg:FTIR-Ax:X}Mtr', name='Beam_pipe_X', labels=['positioners'])
 
 #ECS diffractometer Added by MA
 ECS_Sam_tth = EpicsMotor('XF:28ID1B-ES{ECS-Ax:2Th1}Mtr', name='ECS_Sam_tth', labels=['positioners'])
@@ -134,3 +137,4 @@ OT_stage_4_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X4}Mtr', name='OT_stage_4_X', labe
 
 
 #Pin_diode = EpicsMotor('XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd', name='Pin_diode', labels=['positioners'])  #GK added on Feb12,2025
+
