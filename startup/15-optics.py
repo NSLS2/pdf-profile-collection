@@ -90,11 +90,14 @@ class PDFFastShutter(Device):
                 return True
             return False
         self.cmd.set(self.setmap[val])
-        status = SubscriptionStatus(self.status, check_if_done, settle_time=self.settle_time.get())
-        return status
+        
+        ## Disable 95-96 for bypass readback check 0n 2025/0717 by CHLin
+        # status = SubscriptionStatus(self.status, check_if_done, settle_time=self.settle_time.get())
+        # return status
 
-        #ttime.sleep(1.0)  # wait to set the value since the status PV does not capture the actual status
-        #return NullStatus()
+        ## Enable 99-100 for bypass readback check 0n 2025/0717 by CHLin
+        ttime.sleep(1.0)  # wait to set the value since the status PV does not capture the actual status
+        return NullStatus()
 
     def get(self):
         return self.readmap[self.cmd.get()]
@@ -108,7 +111,8 @@ class PDFFastShutter(Device):
     #     return self.set('Close')
 
 #temporary disable fast shutter while broken - DO 5/18/2022
-# fs = PDFFastShutter('XF:28ID1B-OP{PSh:1-Det:2}', name='fs')
+#Re-enable fast shutter on 2025/07/17 becasue of flt4 failed by CHLin
+fs = PDFFastShutter('XF:28ID1B-OP{PSh:1-Det:2}', name='fs')
 #if enable this, need to disable fs in 12-motors: line 80
 
 class Mirror(Device):

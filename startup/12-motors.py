@@ -90,7 +90,8 @@ fb_two_button_shutters = FilterBankTwoButtonShutter('XF:28ID1B-OP{Fltr:', name='
 fb2 = fb_two_button_shutters
 
 #trying to make a temporary shutter - DO - 5/18/2022
-fs = fb_two_button_shutters.flt4
+#Disable fast shutter on 2025/07/17 becasue of flt4 failed by CHLin
+# fs = fb_two_button_shutters.flt4
 #if disable this, need to re-enable fs in 15-optics: line 105
 
 # Spinner Goniohead motors, add by HZ
