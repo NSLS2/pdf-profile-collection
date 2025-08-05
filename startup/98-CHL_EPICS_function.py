@@ -13,6 +13,14 @@ from xpdacq.beamtime import _configure_area_det
 import datetime
 import os
 
+
+def tqdm_sleep(rest_time, message='Sleep'):
+    from tqdm import tqdm
+    for j in tqdm(range(0,100), desc=message):
+        time.sleep(rest_time/100)
+
+
+
 def auto_name_file(filename_prefix, file_extension, directory=None):
     """
     Generates a filename with the current date and time, and saves the file.
@@ -144,7 +152,8 @@ def pdf_RE4(dets, exposure, extra_md={}):
     _md.update(extra_md)
 
 
-    det_x_pos = [40.644, 31.356, 36]
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
     det_y_pos = [-3.356, -12.644, -8]
 
     if 'det_x_pos' in extra_md.keys():
@@ -188,6 +197,7 @@ def pdf_RE4(dets, exposure, extra_md={}):
                     
                 
     yield from pdf_RE_inner(area_det)
+
 
 
 
@@ -574,6 +584,299 @@ def scan_shifter_saxs(
             go_on = True_motor_move_scan_shifter_pos
 
     return peak_cen_list
+
+
+
+
+## Output the results of scan_shifter_pos_ask() as a csv file by CHLin 2025/07/07
+def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
+    df = pd.DataFrame()
+    df['fitting_pos'] = pos_list
+
+    if save:
+        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
+        os.makedirs(scan_shifter_dir, exist_ok=True)
+        time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        fn = os.path.join(scan_shifter_dir, fn_prefix+'_'+f'{time_stamp}')
+        df.to_csv(fn, sep=' ', index=False, float_format='{:.5e}'.format)
+    
+    return df
+
+
+def scan_pos_csv(pos_list, I_list, save=True, fn_prefix=''):
+    df = pd.DataFrame()
+    df['Stage_position'] = pos_list
+    df['Intensity'] = I_list
+
+    if save:
+        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
+        os.makedirs(scan_shifter_dir, exist_ok=True)
+        time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        fn = os.path.join(scan_shifter_dir, fn_prefix+'_'+f'{time_stamp}')
+        df.to_csv(fn, sep=' ', index=False, float_format='{:.5e}'.format)
+    
+    return df
+
+
+
+## A revision to disable human interaction by CHLin 2025/07/07
+def scan_shifter_pos_ask(
+    motor,
+    xmin,
+    xmax,
+    numx,
+    num_samples=0,
+    min_height=0.02,
+    min_dist=5,
+    peak_rad=1.5,
+    use_det=True,
+    abs_data = False,
+    oset_data = 0.0,
+    return_to_start = True,
+    recover_last_scan = False, 
+    need_interaction = False,   
+    ):
+    
+    def yn_question(q):
+        return input(q).lower().strip()[0] == "y"
+
+    init_pos = motor.position
+
+    print("")
+    if not recover_last_scan:
+        print("I'm going to move the motor: " + str(motor.name))
+        print("It's currently at position: " + str(motor.position))
+        move_coord = float(xmin) - float(motor.position)
+        if move_coord < 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm inboard from current location"
+            )
+        elif move_coord > 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm outboard from current location"
+            )
+        elif move_coord == 0:
+            print("I'm starting where I am right now :)")
+        else:
+            print("I confused")
+
+        # add need_interaction by CHLin on 2025/07/07
+        if need_interaction:
+            if not yn_question("Confirm scan? [y/n] "):
+                print("Aborting operation")
+                return None
+    
+        pos_list, I_list = _motor_move_scan_shifter_pos(
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx)
+    else:
+        print ('recovering last scan from redis...')
+        return_to_start = False
+        pos_list, I_list = retrieve_recent_shifter_scan()
+        plt.figure()
+        plt.plot(pos_list, I_list)
+
+    if len(pos_list) > 1:
+        delx = pos_list[1] - pos_list[0]
+    else:
+        print("only a single point? I'm gonna quit!")
+        return None
+
+    if return_to_start:
+        print ('returning to start position....')
+        motor.move(init_pos)
+
+
+    if oset_data != 0.0:
+        I_list = I_list - oset_data
+
+    if abs_data:
+        I_list = abs(I_list)
+
+    print("")
+    # add need_interaction by CHLin on 2025/07/07
+    if need_interaction:
+        if not yn_question(
+            "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
+        ):
+            return pos_list, I_list
+    plt.close()
+
+    go_on = False
+    tmin_height = min_height
+    tmin_dist = min_dist
+    tpeak_rad = peak_rad
+    fit_attempts = 1
+
+    while not go_on:
+        print("\nI'm going to fit peaks with a min_height of " + str(tmin_height))
+        print(
+            "and min_dist [index values/real vals] of "
+            + str(tmin_dist)
+            + " / "
+            + str(tmin_dist * delx)
+        )
+        print("and I'll fit a radius between each peak-center of " + str(tpeak_rad))
+        if fit_attempts == 0:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                need_interaction = need_interaction, 
+            )
+        else:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                open_new_plot=False,
+                need_interaction = need_interaction,
+            )
+        fit_attempts += 1
+        # if yn_question("\nHappy with the fit? [y/n] ") == False:
+
+        # add need_interaction by CHLin on 2025/07/07
+        if need_interaction:
+            if not go_on:
+                qans = input(
+                    "\n1. Change min_height\n2. Change min_dist\n3. Change peak-fit rad\n0. Give up\n : "
+                )
+                try:
+                    qans = int(qans)
+                    if int(qans) == 1:
+                        tmin_height = float(input("\nWhat is the new min_height value? "))
+                    if int(qans) == 2:
+                        tmin_dist = float(input("\nWhat is the new min_dist value? "))
+                    if int(qans) == 3:
+                        tpeak_rad = float(input("\nWhat is the new peak_rad value? "))
+                    if int(qans) == 0:
+                        print("ok, giving up")
+                        return None
+                except Exception:
+                    print("what, what, whaaat?")
+            else:
+                print("Ok, great.")
+                go_on = True
+
+    return pos_list, I_list, peak_cen_list
+
+
+## A revision for output sample position as a csv file by CHLin 2025/07/07
+## Modificaiton: remove human intercaation
+def _identify_peaks_scan_shifter_pos_ask(
+    x, y, num_samples=0, min_height=0.02, min_dist=5, peak_rad=1.5, open_new_plot=True, 
+    need_interaction = False, 
+):
+    from scipy.signal import find_peaks
+    import matplotlib.pyplot as plt
+    from scipy.optimize import curve_fit
+    import numpy as np
+    import pandas as pd
+
+    if open_new_plot:
+        print("making new figure")
+        plt.figure()
+    else:
+        print("clearing figure")
+        this_fig = plt.gcf()
+        this_fig.clf()
+        plt.pause(0.01)
+
+    def yn_question(q):
+        return input(q).lower().strip()[0] == "y"
+
+    y -= y.min()
+    y /= y.max()
+    print("ymax is " + str(max(y)))
+    print("ymin is " + str(min(y)))
+
+    def cut_data(qt, sqt, qmin, qmax):
+        qcut = []
+        sqcut = []
+        for i in range(len(qt)):
+            if qt[i] >= qmin and qt[i] <= qmax:
+                qcut.append(qt[i])
+                sqcut.append(sqt[i])
+        qcut = np.array(qcut)
+        sqcut = np.array(sqcut)
+        return qcut, sqcut
+
+    # initial guess of position peaks
+    print("finding things")
+    peaks, _ = find_peaks(y, height=min_height, distance=min_dist)
+
+    if num_samples == 0:
+        print("I found " + str(len(peaks)) + " peaks.")
+    elif num_samples == len(peaks):
+        print("I think I found all " + str(num_samples) + " samples you expected.")
+    else:
+        print("WARNING: I saw " + str(len(peaks)) + " samples!")
+    print("doing a thing")
+    this_fig = plt.gcf()
+    this_fig.clf()
+
+    plt.plot(x, y)
+    plt.plot(x[peaks], y[peaks], "kx")
+    plt.show()
+    print("done")
+    plt.pause(0.01)
+    
+    # add need_interaction by CHLin on 2025/07/07
+    if need_interaction:
+        if not yn_question("Go on? [y/n] "):
+            return False, []
+
+    # now refine positions
+    peak_cen_guess_list = x[peaks]
+    peak_amp_guess_list = y[peaks]
+
+    fit_peak_cen_list = np.zeros(len(peaks))
+    fit_peak_amp_list = np.zeros(len(peaks))
+    fit_peak_bgd_list = np.zeros(len(peaks))
+    fit_peak_wid_list = np.zeros(len(peaks))
+
+    def this_func(x, c, w, a, b):
+
+        return a * np.exp(-((x - c) ** 2.0) / (2.0 * (w ** 2))) + b
+
+    this_fig = plt.gcf()
+    this_fig.clf()
+    for i in range(len(peaks)):
+        cut_x, cut_y = cut_data(
+            x, y, peak_cen_guess_list[i] - peak_rad, peak_cen_guess_list[i] + peak_rad
+        )
+        plt.plot(cut_x, cut_y)
+
+        this_guess = [peak_cen_guess_list[i], 1, peak_amp_guess_list[i], 0.0001]
+        low_limits = [peak_cen_guess_list[i] - peak_rad, 0.05, 0.0, 0.0]
+        high_limits = [peak_cen_guess_list[i] + peak_rad, 3, 1.5, 0.5]
+
+        popt, _ = curve_fit(
+            this_func, cut_x, cut_y, p0=this_guess, bounds=(low_limits, high_limits)
+        )
+        plt.plot(cut_x, this_func(cut_x, *popt), "k--")
+
+        fit_peak_amp_list[i] = popt[2]
+        fit_peak_wid_list[i] = popt[1]
+        fit_peak_cen_list[i] = popt[0]
+        fit_peak_bgd_list[i] = popt[3]
+
+    plt.show()
+    plt.pause(0.01)
+
+    # finally, return this as a numpy list
+    return True, fit_peak_cen_list[::-1]  # return flipped
 
 
 
