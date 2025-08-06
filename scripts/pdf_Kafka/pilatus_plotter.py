@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import numpy.ma as ma
+import os
 
 # import importlib
 # Pilatus_getpdf = importlib.import_module("pilatus_getpdf_v2.2").Pilatus_Int
@@ -212,13 +213,16 @@ class plot_pilatus(open_figures):
         except (IndexError): 
             f = plt.figure(self.fig[-1])
 
-        bkg_df = pd.read_csv(bkg_fn, names=['x', 'y'], sep=' ', skiprows=1)
 
-        # scale = pdfconfig.bgscales[0]
-        scale = bkg_scale
-        ax = f.gca()
-        ax.plot(bkg_df['x'], bkg_df['y']*scale, label='background', marker='.',color='green')
-        ax.legend(prop=self.legend_prop)
+        bkg_exist = os.path.exists(bkg_fn)
+        if bkg_exist:
+            bkg_df = pd.read_csv(bkg_fn, names=['x', 'y'], sep=' ', skiprows=1)
+
+            # scale = pdfconfig.bgscales[0]
+            scale = bkg_scale
+            ax = f.gca()
+            ax.plot(bkg_df['x'], bkg_df['y']*scale, label='background', marker='.',color='green')
+            ax.legend(prop=self.legend_prop)
         
         keys = ['sq', 'fq', 'gr']
         xlabel = ['q (A-1)', 'q (A-1)', 'r (A)']

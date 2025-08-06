@@ -14,6 +14,7 @@ class Pilatus_getpdf(Pilatus_Int):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._bgscale = self.getfloat('pdfgetx3', 'bgscale', fallback=0.98)
+        self._backgroundfile = self.get('pdfgetx3', 'backgroundfile', fallback='')
         self.auto_bkg = 1.0
 
     @property
@@ -33,11 +34,20 @@ class Pilatus_getpdf(Pilatus_Int):
         self._bgscale = scale
 
     @property
+    def backgroundfile(self):
+        return self._backgroundfile
+    
+    @backgroundfile.setter
+    def backgroundfile(self, fn):
+        self._bgscale = fn
+
+
+    @property
     def pdfconfig_dict(self):
         return {
             'dataformat':       self.get('pdfgetx3', 'dataformat', fallback='QA'), 
             'outputtype':       self.get('pdfgetx3', 'outputtype', fallback='gr'), 
-            'backgroundfile':   self.get('pdfgetx3', 'backgroundfile', fallback=''), 
+            'backgroundfile':   self.backgroundfile, 
             'plot':             self.get('pdfgetx3', 'plot', fallback='none'), 
             # 'bgscale':          self.getfloat('pdfgetx3', 'bgscale', fallback=0.98), 
             'bgscale':          self.bgscale, 
@@ -97,9 +107,9 @@ class Pilatus_getpdf(Pilatus_Int):
             # self.pdfconfig().composition = 'Ni1.0'
             print(f'\nCan not find sample composition in run.start. Use "Ni1.0" instead.\n')
 
-        
+        bkg_exist = os.path.exists(self.pdfconfig_dict['backgroundfile'])
         ## Use auto_bkg to repalce the bkg in pdfconfig
-        if self.use_auto_bkg:
+        if self.use_auto_bkg and bkg_exist:
             a_bkg = auto_bkg()
             a_bkg.data_df = iq_df
             
@@ -114,6 +124,11 @@ class Pilatus_getpdf(Pilatus_Int):
             self.auto_bkg = res.x
             print(f'\nUpdate {self.pdfconfig().bgscales[0] = } by auto_bkg\n')
             # a_bkg.plot_sub()
+        
+        elif bkg_exist is False:
+            print(f"\n{self.pdfconfig_dict['backgroundfile']} doesn't exist.\n"
+                  f"Use a dummy background for gr transformation.\n")
+            # self.backgroundfile = '/home/xf28id1/Documents/chenghung/B_Empty_Kapton_last_PDF_20250730-053726_6070e6_primary-1_mean_q.chi'
 
 
         iq_array = iq_df.to_numpy().T
