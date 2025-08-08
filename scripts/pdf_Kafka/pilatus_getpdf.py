@@ -6,8 +6,8 @@ from diffpy.pdfgetx import PDFConfig
 
 import importlib
 Pilatus_Int = importlib.import_module("pilatus_int").Pilatus_Int
-auto_bkg = importlib.import_module("auto_bkg").auto_bkg
-
+auto_bkg = importlib.import_module("kafka_uti").auto_bkg
+get_HeaderRows = importlib.import_module("kafka_uti").get_HeaderRows
 
 class Pilatus_getpdf(Pilatus_Int):
 
@@ -113,9 +113,13 @@ class Pilatus_getpdf(Pilatus_Int):
             a_bkg = auto_bkg()
             a_bkg.data_df = iq_df
             
+            rows = get_HeaderRows(self.pdfconfig_dict['backgroundfile'], 
+                                    sep=' ', num_data_column=2, 
+                                    check_range=100, check_float=True)
+            
             a_bkg.pdload_bkg(self.pdfconfig_dict['backgroundfile'], 
                             #  skiprows=self.num_rows_header,
-                             skiprows=1, 
+                             skiprows=rows, 
                              sep=' ', names=['Q', 'I'])
             res = a_bkg.min_integral()
             print(f'{res.x = }')

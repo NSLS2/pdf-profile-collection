@@ -13,11 +13,13 @@ Pilatus_sum = importlib.import_module("pilatus_sum").Pilatus_sum
 Pilatus_Int = importlib.import_module("pilatus_int").Pilatus_Int
 Pilatus_getpdf = importlib.import_module("pilatus_getpdf").Pilatus_getpdf
 pilaplot = importlib.import_module("pilatus_plotter")
+kafka_log = importlib.import_module("kafka_uti").kafka_log
 
 "--------------------------USER INPUTS------------------------------"
 tiled_client = from_profile('pdf')
 sandbox_tiled = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/xpd/sandbox")
 ini_config = '/home/xf28id1/.ipython/profile_collection/scripts/pdf_Kafka/pilatus_kafka_config.ini'
+k_log = kafka_log()
 
 "--------------DO NOT TOUCH BELOW!! Unless CHLin said OK!-----------"
 
@@ -36,7 +38,9 @@ plt.rcParams["figure.raise_window"] = False
 def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,  
                          tiled_client=tiled_client, 
                          ini_config=ini_config, 
-                         sandbox_tiled=sandbox_tiled):
+                         sandbox_tiled=sandbox_tiled, 
+                         k_log=k_log, 
+                         ):
     
     print(f"Listening to Kafka messages for {beamline_acronym_01}")
     print(f"Listening to Kafka messages for {beamline_acronym_02}")
@@ -48,7 +52,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
     # print(f"{cfg_fn = }\n")
     # print(f"{bkg_fn = }\n")
 
-
+    
     def print_message(consumer, doctype, doc):
         name, message = doc
         # print(
@@ -125,7 +129,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             except KeyError:
                 print(f"\nThis document has no topic.\n")
 
-            plotter = pilaplot.plot_pilatus(pila_analyzer.sample_name)
+            plotter = pilaplot.plot_pilatus(pila_analyzer.sample_name, colo_str=k_log.colo_str)
 
             ## Sum three images at three positions
             if message['num_events']['primary']==3:
@@ -162,6 +166,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print('This is an XRD scan. Skip gr transformation.')
 
 
+            k_log.colo_str = plotter.colo_str
             print('\n########### Events printing division ############\n')
       
            

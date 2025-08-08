@@ -9,6 +9,88 @@ from scipy import integrate
 from scipy.optimize import minimize, NonlinearConstraint
 
 
+
+class kafka_log():
+
+    def __init__(self):
+        self.colo_str = ''
+
+
+
+def random_color(previous_color=None):
+
+    color_list = ['tab:blue', 'tab:orange', 'tab:green', 
+                    'tab:red', 'tab:purple', 'tab:brown', 
+                    'tab:pink', 'tab:gray', 'tab:olive', 
+                    'tab:cyan', 
+    ]
+
+    random_int = np.random.randint(len(color_list))
+    new_color = color_list[random_int]
+
+    is_str = type(previous_color) is str 
+    in_color_list = previous_color in color_list
+
+    if is_str and in_color_list:
+        while new_color == previous_color:
+            random_int = np.random.randint(len(color_list))
+            new_color = color_list[random_int]
+        return new_color
+        
+    return new_color
+
+
+
+def get_HeaderRows(fn, sep=' ', num_data_column=2, check_range=100, check_float=True):
+
+    cont_01 = []
+    with open(fn, 'r') as f:
+        cont = f.readlines()
+        f.close()
+    
+    for line in cont:
+        new_line = line.strip('\n').split(sep)
+        cont_01.append(new_line)
+
+    i = 0
+    while i < len(cont_01):
+        c0 = (len(cont_01[i]) == num_data_column)
+        c1 = all([len(l)==num_data_column for l in cont_01[i:i+check_range]])
+        c2 = (is_float(cont_01[i][0]) and is_float(cont_01[i][1]))
+
+        if check_float:
+            if c0 and c1 and c2:
+                # print(f'Num of rows of header is {i}.')
+                break
+        else:
+            if c0 and c1:
+                # print(f'Num of rows of header is {i}.')
+                break
+            
+        i += 1
+
+    return i
+
+
+
+def is_float(s):    
+    """
+    Checks if a string can be successfully converted to a float.
+    
+    Args:
+    s: The string to check.
+    
+    Returns:
+    True if the string can be converted to a float, False otherwise.
+    """
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+
 class auto_bkg():
     
     def __init__(self):       
