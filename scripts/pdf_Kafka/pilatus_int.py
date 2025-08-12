@@ -184,4 +184,4 @@ class Pilatus_Int(Pilatus_sum):
         self.num_rows_header = iq_saver(iq_fn, iq_df, md)
         print(f'\n*** {os.path.basename(iq_fn)} saved!! ***\n')
 
-        return iq_df, iq_fn
+        return iq_df, iq_fn, outlier_mask_2d_masked, q1d

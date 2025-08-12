@@ -7,6 +7,7 @@ import os
 import importlib
 get_HeaderRows = importlib.import_module("kafka_uti").get_HeaderRows
 random_color = importlib.import_module("kafka_uti").random_color
+color_tuner = importlib.import_module("color_tuner").color_tuner
 # Pilatus_getpdf = importlib.import_module("pilatus_getpdf_v2.2").Pilatus_Int
 
 class open_figures():
@@ -21,7 +22,7 @@ class open_figures():
 class plot_pilatus(open_figures):
     
     def __init__(self, sample_name, 
-                 figure_labels = ['stithed_tiff', 'I(Q)', 'S(Q)', 'f(Q)', 'g(r)', ], 
+                 figure_labels = ['Masked_tiff', 'I(Q)', 'S(Q)', 'f(Q)', 'g(r)', ], 
                  color_str = '',
                 ):
         self.fig = figure_labels
@@ -32,13 +33,13 @@ class plot_pilatus(open_figures):
         self.legend_prop = {'weight':'regular', 'size':14}
         self.title_prop = {'weight':'regular', 'size':12}
         self.xylabel_prop = {'weight':'regular', 'size':16}
-        self.color_str = random_color(previous_color=colo_str)
+        self.color_str = random_color(previous_color=color_str)
         self.spine_width = 2
         # self.date, self.time = _readable_time(metadata_dic['time'])
         super().__init__(figure_labels)
 
 
-    def plot_tiff(self, full_imsum, title=None):
+    def plot_tiff(self, img, title=None):
         
         try:
             f = plt.figure(self.fig[0])
@@ -51,16 +52,16 @@ class plot_pilatus(open_figures):
         for spine in ax.spines.values():
             spine.set_linewidth(self.spine_width)
 
-        vmax = np.nanpercentile(full_imsum, 98)
+        vmax = np.nanpercentile(img, 98)
         # vmax = 10000
         if vmax==np.nan:
            vmax = 10000
 
-        vmin = np.nanpercentile(full_imsum, 10)
+        vmin = np.nanpercentile(img, 10)
         if vmin==np.nan:
            vmin = 0
 
-        im = ax.imshow(full_imsum, label=self.sample_name, 
+        im = ax.imshow(img, label=self.sample_name, 
                        vmin=vmin, vmax=vmax)
         f.colorbar(im)
 
@@ -77,7 +78,7 @@ class plot_pilatus(open_figures):
 
 
 
-    def plot_tiff2(self, full_imsum, mask_img, title=None):
+    def plot_tiff2(self, img, mask_img, title=None):
         
         try:
             f = plt.figure(self.fig[0])
@@ -90,10 +91,10 @@ class plot_pilatus(open_figures):
         ax2 = f.add_subplot(1, 2, 2)
 
         mask_img = np.invert(mask_img.astype(bool))
-        masked_img = full_imsum * mask_img
+        masked_img = img * mask_img
         masked_img[masked_img==0] = np.nan
 
-        img = [full_imsum, masked_img]
+        img_list = [img, masked_img]
         ax = [ax1, ax2]
 
         for i in range(len(ax)):
@@ -101,16 +102,16 @@ class plot_pilatus(open_figures):
             for spine in ax[i].spines.values():
                 spine.set_linewidth(self.spine_width)
 
-            vmax = np.nanpercentile(img[i], 98)
+            vmax = np.nanpercentile(img_list[i], 98)
             # vmax = 10000
             if vmax==np.nan:
                 vmax = 10000
 
-            vmin = np.nanpercentile(img[i], 10)
+            vmin = np.nanpercentile(img_list[i], 10)
             if vmin==np.nan:
                 vmin = 0
 
-            im = ax[i].imshow(img[i], label=self.sample_name, 
+            im = ax[i].imshow(img_list[i], label=self.sample_name, 
                             vmin=vmin, vmax=vmax)
             
 
@@ -132,6 +133,101 @@ class plot_pilatus(open_figures):
         f.canvas.manager.show()
         f.canvas.flush_events()
         
+
+
+    def plot_tiff3(self, img, mask_fn, title=None):
+        
+        try:
+            f = plt.figure(self.fig[0])
+        except (IndexError): 
+            f = plt.figure(self.fig[-1])
+
+        plt.clf()
+        ax = f.gca()
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(self.spine_width)
+
+        mask1 = np.load(mask_fn)
+        masked_ = ma.masked_array(img, mask=mask1)
+        masked_img = masked_.filled(fill_value=np.nan)
+
+        # vmax = np.nanpercentile(masked_img, 98)
+        # # vmax = 10000
+        # if vmax==np.nan:
+        #    vmax = 10000
+
+        # vmin = np.nanpercentile(masked_img, 10)
+        # if vmin==np.nan:
+        #    vmin = 0
+
+        img_tuner = color_tuner(f, masked_img)
+        img_tuner()
+        # im = ax.imshow(masked_img, label=self.sample_name, 
+        #                vmin=vmin, vmax=vmax)
+        # f.colorbar(im)
+
+        if title != None:
+            ax.set_title(title, prop=self.title_prop)
+        else:
+            pass
+
+        ax.tick_params(axis='both', labelsize=self.labelsize)
+        ax.legend(prop=self.legend_prop)
+
+        f.canvas.manager.show()
+        f.canvas.flush_events()
+
+
+
+
+    def plot_tiff4(self, unrolled_array, q_array, title=None):
+        
+        try:
+            # f = plt.figure(self.fig[0])
+            f = plt.figure('Unroll masked pct-filtered tiff in q space')
+        except (IndexError): 
+            f = plt.figure(self.fig[-1])
+
+        plt.clf()
+        ax = f.gca()
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(self.spine_width)
+
+        # mask1 = np.load(mask_fn)
+        # masked_ = ma.masked_array(img, mask=mask1)
+        # masked_img = masked_.filled(fill_value=np.nan)
+
+        # vmax = np.nanpercentile(masked_img, 98)
+        # # vmax = 10000
+        # if vmax==np.nan:
+        #    vmax = 10000
+
+        # vmin = np.nanpercentile(masked_img, 10)
+        # if vmin==np.nan:
+        #    vmin = 0
+
+        img_tuner = color_tuner(f, unrolled_array, q_array=q_array)
+        img_tuner()
+        # im = ax.imshow(masked_img, label=self.sample_name, 
+        #                vmin=vmin, vmax=vmax)
+        # f.colorbar(im)
+
+        if title != None:
+            ax.set_title(title, prop=self.title_prop)
+        else:
+            pass
+
+        ax.tick_params(axis='both', labelsize=self.labelsize)
+        ax.legend(prop=self.legend_prop)
+
+        f.canvas.manager.show()
+        f.canvas.flush_events()
+
+
+
+
         
     def plot_iq(self, iq_fn, skip_rows, title=None,):
         
