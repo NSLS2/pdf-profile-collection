@@ -73,7 +73,8 @@ if xpdacq_version < (1, 1, 0):
 
     ## Added by CHL 2025/05/23
     # We need to repeat it here for `xrun` as RE is not used here...
-    nslsii.configure_kafka_publisher(xrun, "pdf")
+    # return res added on 2025/08/12
+    res = nslsii.configure_kafka_publisher(xrun, "pdf")
 
     if bt:
         xrun.beamtime = bt

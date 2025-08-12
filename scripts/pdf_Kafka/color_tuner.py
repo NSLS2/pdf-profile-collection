@@ -43,8 +43,8 @@ class color_tuner():
         self.bplus = Button(self.axplus, 'Max +')
         self.bminus = Button(self.axminus, 'Max -')
 
-        self.axplus1 = self.fig.add_axes([0.01, 0.9, 0.082, 0.05])
-        self.axminus1 = self.fig.add_axes([0.01, 0.8, 0.082, 0.05])
+        self.axplus1 = self.fig.add_axes([0.9, 0.7, 0.082, 0.05])
+        self.axminus1 = self.fig.add_axes([0.9, 0.6, 0.082, 0.05])
         self.bplus1 = Button(self.axplus1, 'Min +')
         self.bminus1 = Button(self.axminus1, 'Min -')
 

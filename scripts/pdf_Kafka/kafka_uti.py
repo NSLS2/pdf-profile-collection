@@ -13,7 +13,7 @@ from scipy.optimize import minimize, NonlinearConstraint
 class kafka_log():
 
     def __init__(self):
-        self.colo_str = ''
+        self.color_str = ''
 
 
 

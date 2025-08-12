@@ -139,6 +139,7 @@ class plot_pilatus(open_figures):
         
         try:
             f = plt.figure(self.fig[0])
+            # f = plt.figure('test')
         except (IndexError): 
             f = plt.figure(self.fig[-1])
 
@@ -161,8 +162,8 @@ class plot_pilatus(open_figures):
         # if vmin==np.nan:
         #    vmin = 0
 
-        img_tuner = color_tuner(f, masked_img)
-        img_tuner()
+        img_tuner3 = color_tuner(f, masked_img)
+        # img_tuner3()
         # im = ax.imshow(masked_img, label=self.sample_name, 
         #                vmin=vmin, vmax=vmax)
         # f.colorbar(im)
@@ -173,10 +174,12 @@ class plot_pilatus(open_figures):
             pass
 
         ax.tick_params(axis='both', labelsize=self.labelsize)
-        ax.legend(prop=self.legend_prop)
+        # ax.legend(prop=self.legend_prop)
 
         f.canvas.manager.show()
         f.canvas.flush_events()
+
+        return img_tuner3
 
 
 
@@ -185,7 +188,7 @@ class plot_pilatus(open_figures):
         
         try:
             # f = plt.figure(self.fig[0])
-            f = plt.figure('Unroll masked pct-filtered tiff in q space')
+            f = plt.figure('Unroll masked pct-filtered tiff')
         except (IndexError): 
             f = plt.figure(self.fig[-1])
 
@@ -208,8 +211,9 @@ class plot_pilatus(open_figures):
         # if vmin==np.nan:
         #    vmin = 0
 
-        img_tuner = color_tuner(f, unrolled_array, q_array=q_array)
-        img_tuner()
+        img = unrolled_array.filled(fill_value=np.nan)
+        img_tuner4 = color_tuner(f, img, q_array=q_array)
+        img_tuner4()
         # im = ax.imshow(masked_img, label=self.sample_name, 
         #                vmin=vmin, vmax=vmax)
         # f.colorbar(im)
@@ -220,7 +224,7 @@ class plot_pilatus(open_figures):
             pass
 
         ax.tick_params(axis='both', labelsize=self.labelsize)
-        ax.legend(prop=self.legend_prop)
+        # ax.legend(prop=self.legend_prop)
 
         f.canvas.manager.show()
         f.canvas.flush_events()
