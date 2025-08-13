@@ -8,19 +8,20 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 class color_tuner():
     
-    def __init__(self, fig, img, aspect=1, q_array=None, histogram=True):
+    def __init__(self, fig, img, aspect=None, q_array=None, histogram=True):
     
         self.fig = fig
         # self.ax = fig.gca()
         # self.ax = self.fig.add_axes([0.1, 0.1, 0.7, 0.8])
         self.img = img
-        self.vmax = np.nanpercentile(img, 98)
+        self.vmax = np.round(np.nanpercentile(img, 98), decimals=2)
         self.slider_max = self.vmax+500
-        self.vmin = np.nanpercentile(img, 10)
+        self.vmin = np.round(np.nanpercentile(img, 10), decimals=2)
         self.slider_min = self.vmin-500
         self.histogram = histogram
+        self.aspect = aspect
 
-        def is_q_space(q_array, img, ax, vmax, vmin, ):
+        def is_q_space(q_array, img, ax, vmax, vmin, aspect):
             if q_array is None:
                 im = ax.imshow(img, vmax=vmax, vmin=vmin)
                 # self.ax.set_aspect(aspect)
@@ -30,6 +31,9 @@ class color_tuner():
                 im = ax.pcolormesh(x_mesh, y_mesh, img, vmax=vmax, vmin=vmin)
                 ax.invert_yaxis()
 
+            if aspect is not None:
+                ax.set_aspect(aspect)
+
             ax.set_xticks([])
             ax.set_yticks([])
             
@@ -38,7 +42,7 @@ class color_tuner():
 
         if self.histogram:
             self.ax = self.fig.add_subplot(1,2,1)
-            self.im = is_q_space(q_array, img, self.ax, self.vmax, self.vmin)
+            self.im = is_q_space(q_array, img, self.ax, self.vmax, self.vmin, self.aspect)
             ax_divider = make_axes_locatable(self.ax)
             cax = ax_divider.append_axes("top", size="5%", pad="3%")
             self.cbar = fig.colorbar(self.im, cax=cax, location='top')
@@ -51,11 +55,14 @@ class color_tuner():
 
         else:
             self.ax = self.fig.add_subplot(1,1,1)
-            self.im = is_q_space(q_array, img, self.ax, self.vmax, self.vmin)
-            self.cbar = fig.colorbar(self.im, location='right')
+            self.im = is_q_space(q_array, img, self.ax, self.vmax, self.vmin, self.aspect)
+            self.cbar = fig.colorbar(self.im, )
+            # ax_divider = make_axes_locatable(self.ax)
+            # cax = ax_divider.append_axes("top", size="5%", pad="3%")
+            # self.cbar = fig.colorbar(self.im, cax=cax, location='top')
             vm_button_left = 0.9
         
-        # # Create the RangeSlider
+        ## Create the RangeSlider
         self.fig.subplots_adjust(bottom=0.1)
         self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
         self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
@@ -64,16 +71,11 @@ class color_tuner():
             self.lower_limit_line = self.ax_.axvline(self.slider.val[0], color='r')
             self.upper_limit_line = self.ax_.axvline(self.slider.val[1], color='r')
 
-        # Creat buttons
+        ## Creat buttons
         self.axplus = self.fig.add_axes([vm_button_left, 0.9, 0.04, 0.05])
         self.axminus = self.fig.add_axes([vm_button_left, 0.8, 0.04, 0.05])
         self.bplus = Button(self.axplus, 'M+')
         self.bminus = Button(self.axminus, 'M -')
-
-        # self.axplus2 = self.fig.add_axes([vm_button_left, 0.5, 0.06, 0.05])
-        # self.axminus2 = self.fig.add_axes([vm_button_left, 0.4, 0.06, 0.05])
-        # self.bplus2 = Button(self.axplus2, 'M++')
-        # self.bminus2 = Button(self.axminus2, 'M - -')
 
         self.axplus1 = self.fig.add_axes([vm_button_left, 0.7, 0.04, 0.05])
         self.axminus1 = self.fig.add_axes([vm_button_left, 0.6, 0.04, 0.05])
@@ -81,7 +83,7 @@ class color_tuner():
         self.bminus1 = Button(self.axminus1, 'm -')
 
 
-        # Create text boxes
+        ## Create text boxes
         self.axbox = self.fig.add_axes([vm_button_left+0.01, 0.5, 0.04, 0.05])
         self.axbox1 = self.fig.add_axes([vm_button_left+0.01, 0.4, 0.04, 0.05])
         self.tbox = TextBox(self.axbox, ' VM ')

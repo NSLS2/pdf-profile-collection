@@ -13,16 +13,13 @@ color_tuner = importlib.import_module("color_tuner").color_tuner
 class open_figures():
     def __init__(self, figure_labels):
         for i in figure_labels:
-            if i==0:
-                plt.figure(num=i, figsize=(15,6), constrained_layout=True)
-            else:
-                plt.figure(num=i, figsize=(8,6))
+            plt.figure(num=i, figsize=(8,6))
 
 
 class plot_pilatus(open_figures):
     
     def __init__(self, sample_name, 
-                 figure_labels = ['Masked_tiff', 'I(Q)', 'S(Q)', 'f(Q)', 'g(r)', ], 
+                 figure_labels = ['tiff & Histogram', 'I(Q)', 'S(Q)', 'f(Q)', 'g(r)', ], 
                  color_str = '',
                 ):
         self.fig = figure_labels
@@ -135,7 +132,7 @@ class plot_pilatus(open_figures):
         
 
 
-    def plot_tiff3(self, img, mask_fn, title=None, mask=True, histogram=True):
+    def plot_tiff3(self, img, mask_fn, title=None, mask=False, histogram=False):
         
         try:
             f = plt.figure(self.fig[0])
@@ -144,10 +141,10 @@ class plot_pilatus(open_figures):
             f = plt.figure(self.fig[-1])
 
         plt.clf()
-        ax = f.gca()
+        # ax = f.gca()
 
-        for spine in ax.spines.values():
-            spine.set_linewidth(self.spine_width)
+        # for spine in ax.spines.values():
+        #     spine.set_linewidth(self.spine_width)
 
         mask1 = np.load(mask_fn)
         masked_ = ma.masked_array(img, mask=mask1)
@@ -158,12 +155,12 @@ class plot_pilatus(open_figures):
         else:
             img_tuner = color_tuner(f, img, histogram=histogram)
 
-        if title != None:
-            ax.set_title(title, prop=self.title_prop)
-        else:
-            pass
+        # if title != None:
+        #     ax.set_title(title, prop=self.title_prop)
+        # else:
+        #     pass
 
-        ax.tick_params(axis='both', labelsize=self.labelsize)
+        # ax.tick_params(axis='both', labelsize=self.labelsize)
         # ax.legend(prop=self.legend_prop)
 
         f.canvas.manager.show()
@@ -174,29 +171,29 @@ class plot_pilatus(open_figures):
 
 
 
-    def plot_tiff4(self, unrolled_array, q_array, title=None):
+    def plot_tiff4(self, unrolled_array, q_array, title=None, aspect=None):
         
         try:
             # f = plt.figure(self.fig[0])
-            f = plt.figure('Unroll masked pct-filtered tiff')
+            f = plt.figure('Unroll masked pct-filtered tiff', figsize=(8,6))
         except (IndexError): 
             f = plt.figure(self.fig[-1])
 
         plt.clf()
-        ax = f.gca()
+        # ax = f.gca()
 
-        for spine in ax.spines.values():
-            spine.set_linewidth(self.spine_width)
+        # for spine in ax.spines.values():
+        #     spine.set_linewidth(self.spine_width)
 
         img = unrolled_array.filled(fill_value=np.nan)
-        img_tuner = color_tuner(f, img, q_array=q_array)
+        img_tuner = color_tuner(f, img, q_array=q_array, histogram=False, aspect=aspect)
 
-        if title != None:
-            ax.set_title(title, prop=self.title_prop)
-        else:
-            pass
+        # if title != None:
+        #     ax.set_title(title, prop=self.title_prop)
+        # else:
+        #     pass
 
-        ax.tick_params(axis='both', labelsize=self.labelsize)
+        # ax.tick_params(axis='both', labelsize=self.labelsize)
         # ax.legend(prop=self.legend_prop)
 
         f.canvas.manager.show()
