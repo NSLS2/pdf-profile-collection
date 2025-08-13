@@ -68,9 +68,12 @@ class color_tuner():
         self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
         self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
 
+
+        ## Add vertical lines in histogram
         if self.histogram:
             self.lower_limit_line = self.ax_.axvline(self.slider.val[0], color='r')
             self.upper_limit_line = self.ax_.axvline(self.slider.val[1], color='r')
+
 
         ## Creat buttons
         self.axplus = self.fig.add_axes([vm_button_left, 0.9, 0.04, 0.05])
@@ -92,27 +95,33 @@ class color_tuner():
 
 
     
-    # Re-add the RangeSlider
+    ## Re-add the RangeSlider
     def readd_slider(self):
         self.slider_ax.remove()
         self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
         self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
-    
+
+
+    ## Re-add vertical lines in histogram
+    def readd_vline(self, mpl_line, val):
+        self.mpl_line.remove()
+        self.mpl_line = self.ax_.axvline(val, color='r')
+
     
     def update(self, val):
-        # The val passed to a callback by the RangeSlider will
-        # be a tuple of (min, max)
+        ## The val passed to a callback by the RangeSlider will
+        ## be a tuple of (min, max)
     
-        # Update the image's colormap
+        ## Update the image's colormap
         self.im.norm.vmin = val[0]
         self.im.norm.vmax = val[1]
 
-        # Update the position of the vertical lines
+        ## Update the position of the vertical lines
         if self.histogram:
             self.lower_limit_line.set_xdata([val[0], val[0]])
             self.upper_limit_line.set_xdata([val[1], val[1]])
     
-        # Redraw the figure to ensure it updates
+        ## Redraw the figure to ensure it updates
         self.fig.canvas.draw_idle()
 
 
@@ -120,7 +129,14 @@ class color_tuner():
         self.slider_max += 100
         self.im.norm.vmax = self.slider_max
         self.readd_slider()
-        self.slider.set_val([self.im.norm.vmin, self.slider_max])
+
+        val = [self.im.norm.vmin, self.slider_max]
+        self.slider.set_val(val)
+        ## Update the position of the vertical lines
+        if self.histogram:
+            # self.lower_limit_line.set_xdata([val[0], val[0]])
+            self.upper_limit_line.set_xdata([val[1], val[1]])
+ 
         self.slider.on_changed(self.update)
 
     
@@ -128,7 +144,15 @@ class color_tuner():
         self.slider_max -= 100
         self.im.norm.vmax = self.slider_max
         self.readd_slider()
-        self.slider.set_val([self.im.norm.vmin, self.slider_max])
+
+        val = [self.im.norm.vmin, self.slider_max]
+        self.slider.set_val(val)
+
+        ## Update the position of the vertical lines
+        if self.histogram:
+            # self.lower_limit_line.set_xdata([val[0], val[0]])
+            self.upper_limit_line.set_xdata([val[1], val[1]])
+        
         self.slider.on_changed(self.update)
 
 
@@ -136,7 +160,15 @@ class color_tuner():
         self.slider_min += 100
         self.im.norm.vmin = self.slider_min
         self.readd_slider()
-        self.slider.set_val([self.slider_min, self.im.norm.vmax])
+
+        val = [self.slider_min, self.im.norm.vmax]
+        self.slider.set_val(val)
+
+        ## Update the position of the vertical lines
+        if self.histogram:
+            self.lower_limit_line.set_xdata([val[0], val[0]])
+            # self.upper_limit_line.set_xdata([val[1], val[1]])
+        
         self.slider.on_changed(self.update)
 
     
@@ -144,7 +176,15 @@ class color_tuner():
         self.slider_min -= 100
         self.im.norm.vmin = self.slider_min
         self.readd_slider()
-        self.slider.set_val([self.slider_min, self.im.norm.vmax])
+
+        val = [self.slider_min, self.im.norm.vmax]
+        self.slider.set_val(val)
+
+        ## Update the position of the vertical lines
+        if self.histogram:
+            self.lower_limit_line.set_xdata([val[0], val[0]])
+            # self.upper_limit_line.set_xdata([val[1], val[1]])
+        
         self.slider.on_changed(self.update)
         
 
@@ -152,7 +192,15 @@ class color_tuner():
         self.slider_max = float(expression)
         self.im.norm.vmax = self.slider_max
         self.readd_slider()
-        self.slider.set_val([self.im.norm.vmin, self.slider_max])
+        
+        val = [self.im.norm.vmin, self.slider_max]
+        self.slider.set_val(val)
+
+        ## Update the position of the vertical lines
+        if self.histogram:
+            # self.lower_limit_line.set_xdata([val[0], val[0]])
+            self.upper_limit_line.set_xdata([val[1], val[1]])
+        
         self.slider.on_changed(self.update)
 
 
@@ -160,17 +208,23 @@ class color_tuner():
         self.slider_min = float(expression)
         self.im.norm.vmin = self.slider_min
         self.readd_slider()
-        self.slider.set_val([self.slider_min, self.im.norm.vmax])
+
+        val = [self.slider_min, self.im.norm.vmax]
+        self.slider.set_val(val)
+
+        ## Update the position of the vertical lines
+        if self.histogram:
+            self.lower_limit_line.set_xdata([val[0], val[0]])
+            # self.upper_limit_line.set_xdata([val[1], val[1]])
+        
         self.slider.on_changed(self.update)
 
 
     def __call__(self):
-        self.slider.on_changed(self.update)
 
         self.bplus.on_clicked(self.vmax_plus)
         self.bminus.on_clicked(self.vmax_minus)
-        # self.bplus2.on_clicked(self.vmax_pplus)
-        # self.bminus2.on_clicked(self.vmax_mminus)
+
         self.bplus1.on_clicked(self.vmin_plus)
         self.bminus1.on_clicked(self.vmin_minus)
 
@@ -179,6 +233,7 @@ class color_tuner():
         self.tbox1.on_submit(self.submit_vm)
         self.tbox1.set_val(self.im.norm.vmin)
 
-        # pass
+        self.slider.on_changed(self.update)
+
 
         
