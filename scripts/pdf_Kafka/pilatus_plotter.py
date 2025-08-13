@@ -8,6 +8,7 @@ import importlib
 get_HeaderRows = importlib.import_module("kafka_uti").get_HeaderRows
 random_color = importlib.import_module("kafka_uti").random_color
 color_tuner = importlib.import_module("color_tuner").color_tuner
+bin_ndarray = importlib.import_module("kafka_uti").bin_ndarray
 # Pilatus_getpdf = importlib.import_module("pilatus_getpdf_v2.2").Pilatus_Int
 
 class open_figures():
@@ -132,7 +133,7 @@ class plot_pilatus(open_figures):
         
 
 
-    def plot_tiff3(self, img, mask_fn, title=None, mask=False, histogram=False):
+    def plot_tiff3(self, img, mask_fn, title=None, mask=False, histogram=False, aspect=None):
         
         try:
             f = plt.figure(self.fig[0])
@@ -151,9 +152,9 @@ class plot_pilatus(open_figures):
         masked_img = masked_.filled(fill_value=np.nan)
 
         if mask:
-            img_tuner = color_tuner(f, masked_img, histogram=histogram)
+            img_tuner = color_tuner(f, masked_img, histogram=histogram, aspect=aspect)
         else:
-            img_tuner = color_tuner(f, img, histogram=histogram)
+            img_tuner = color_tuner(f, img, histogram=histogra, aspect=aspect)
 
         # if title != None:
         #     ax.set_title(title, prop=self.title_prop)
@@ -171,7 +172,7 @@ class plot_pilatus(open_figures):
 
 
 
-    def plot_tiff4(self, unrolled_array, q_array, title=None, aspect=None):
+    def plot_tiff4(self, unrolled_array, q_array, title=None, binned=True, aspect='auto'):
         
         try:
             # f = plt.figure(self.fig[0])
@@ -186,6 +187,10 @@ class plot_pilatus(open_figures):
         #     spine.set_linewidth(self.spine_width)
 
         img = unrolled_array.filled(fill_value=np.nan)
+
+        if binned:
+            img = bin_ndarray(img)
+        
         img_tuner = color_tuner(f, img, q_array=q_array, histogram=False, aspect=aspect)
 
         # if title != None:

@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 class color_tuner():
     
-    def __init__(self, fig, img, aspect=None, q_array=None, histogram=True):
+    def __init__(self, fig, img, aspect='auto', q_array=None, histogram=True):
     
         self.fig = fig
         # self.ax = fig.gca()
@@ -24,7 +24,7 @@ class color_tuner():
         def is_q_space(q_array, img, ax, vmax, vmin, aspect):
             if q_array is None:
                 im = ax.imshow(img, vmax=vmax, vmin=vmin)
-                # self.ax.set_aspect(aspect)
+
             else:
                 x_mesh = np.asarray(q_array)
                 y_mesh = np.arange(img.shape[0])
@@ -55,12 +55,13 @@ class color_tuner():
 
         else:
             self.ax = self.fig.add_subplot(1,1,1)
+            # self.ax = fig.gca()
             self.im = is_q_space(q_array, img, self.ax, self.vmax, self.vmin, self.aspect)
-            self.cbar = fig.colorbar(self.im, )
-            # ax_divider = make_axes_locatable(self.ax)
-            # cax = ax_divider.append_axes("top", size="5%", pad="3%")
-            # self.cbar = fig.colorbar(self.im, cax=cax, location='top')
-            vm_button_left = 0.9
+            # self.cbar = fig.colorbar(self.im, location='top')
+            ax_divider = make_axes_locatable(self.ax)
+            cax = ax_divider.append_axes("top", size="5%", pad="3%")
+            self.cbar = fig.colorbar(self.im, cax=cax, location='top')
+            vm_button_left = 0.02
         
         ## Create the RangeSlider
         self.fig.subplots_adjust(bottom=0.1)
