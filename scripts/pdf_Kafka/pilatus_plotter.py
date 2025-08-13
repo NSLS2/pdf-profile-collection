@@ -135,7 +135,7 @@ class plot_pilatus(open_figures):
         
 
 
-    def plot_tiff3(self, img, mask_fn, title=None):
+    def plot_tiff3(self, img, mask_fn, title=None, mask=True, histogram=True):
         
         try:
             f = plt.figure(self.fig[0])
@@ -153,7 +153,10 @@ class plot_pilatus(open_figures):
         masked_ = ma.masked_array(img, mask=mask1)
         masked_img = masked_.filled(fill_value=np.nan)
 
-        img_tuner = color_tuner(f, masked_img)
+        if mask:
+            img_tuner = color_tuner(f, masked_img, histogram=histogram)
+        else:
+            img_tuner = color_tuner(f, img, histogram=histogram)
 
         if title != None:
             ax.set_title(title, prop=self.title_prop)

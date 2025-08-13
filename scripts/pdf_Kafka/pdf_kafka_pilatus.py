@@ -136,14 +136,14 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f"\nStart to stitch {pila_analyzer.run.start['sp_detector']} data: uid = {pila_analyzer.uid}\n")
                 full_imsum, process_dir = pila_analyzer.save_image_sum_T()
                 print(f'\nApply mask {pila_analyzer.stitched_mask = }\n')
-                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.stitched_mask)
+                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.stitched_mask, mask=False, histogram=True)
 
             ## Process pe1c data without stitching 
             elif message['num_events']['primary']==1:
                 print(f"\nStart to process {pila_analyzer.run.start['detectors'][0]} data: uid = {pila_analyzer.uid}\n")
                 full_imsum, process_dir = pila_analyzer.flat_filed_pe1c()
                 print(f'\nApply mask {pila_analyzer.mask_pe1c = }\n')
-                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.mask_pe1c)
+                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.mask_pe1c, mask=False, histogram=True)
 
             img_tuner3()
 

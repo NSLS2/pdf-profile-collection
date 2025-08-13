@@ -30,6 +30,9 @@ class color_tuner():
                 im = ax.pcolormesh(x_mesh, y_mesh, img, vmax=vmax, vmin=vmin)
                 ax.invert_yaxis()
 
+            ax.set_xticks([])
+            ax.set_yticks([])
+            
             return im
 
 
@@ -52,7 +55,7 @@ class color_tuner():
             self.cbar = fig.colorbar(self.im, location='right')
             vm_button_left = 0.9
         
-        # Create the RangeSlider
+        # # Create the RangeSlider
         self.fig.subplots_adjust(bottom=0.1)
         self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
         self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
@@ -84,6 +87,13 @@ class color_tuner():
         self.tbox = TextBox(self.axbox, ' VM ')
         self.tbox1 = TextBox(self.axbox1, ' vm ')     
 
+
+    
+    # Re-add the RangeSlider
+    def readd_slider(self):
+        self.slider_ax.remove()
+        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
+        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
     
     
     def update(self, val):
@@ -105,68 +115,49 @@ class color_tuner():
 
     def vmax_plus(self, event):
         self.slider_max += 100
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmax = self.slider_max
+        self.readd_slider()
+        self.slider.set_val([self.im.norm.vmin, self.slider_max])
         self.slider.on_changed(self.update)
 
     
     def vmax_minus(self, event):
         self.slider_max -= 100
-        # self.slider.set_max(self.slider_max)
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
-        self.slider.on_changed(self.update)
-
-
-    def vmax_pplus(self, event):
-        self.slider_max += 10000
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
-        self.slider.on_changed(self.update)
-
-    
-    def vmax_mminus(self, event):
-        self.slider_max -= 10000
-        # self.slider.set_max(self.slider_max)
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmax = self.slider_max
+        self.readd_slider()
+        self.slider.set_val([self.im.norm.vmin, self.slider_max])
         self.slider.on_changed(self.update)
 
 
     def vmin_plus(self, event):
         self.slider_min += 100
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmin = self.slider_min
+        self.readd_slider()
+        self.slider.set_val([self.slider_min, self.im.norm.vmax])
         self.slider.on_changed(self.update)
 
     
     def vmin_minus(self, event):
         self.slider_min -= 100
-        # self.slider.set_max(self.slider_max)
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmin = self.slider_min
+        self.readd_slider()
+        self.slider.set_val([self.slider_min, self.im.norm.vmax])
         self.slider.on_changed(self.update)
         
 
     def submit_VM(self, expression):
         self.slider_max = float(expression)
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmax = self.slider_max
+        self.readd_slider()
+        self.slider.set_val([self.im.norm.vmin, self.slider_max])
         self.slider.on_changed(self.update)
 
 
     def submit_vm(self, expression):
         self.slider_min = float(expression)
-        self.slider_ax.remove()
-        self.slider_ax = plt.axes([0.15, 0.01, 0.65, 0.03])
-        self.slider = RangeSlider(self.slider_ax, "color_scale", self.slider_min, self.slider_max)
+        self.im.norm.vmin = self.slider_min
+        self.readd_slider()
+        self.slider.set_val([self.slider_min, self.im.norm.vmax])
         self.slider.on_changed(self.update)
 
 
