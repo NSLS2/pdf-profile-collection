@@ -152,7 +152,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             print(f"\nStart to do 2D integration: uid = {pila_analyzer.uid}\n")
             iq_df, iq_fn, unrolled_array, q1d = pila_analyzer.pct_integration(full_imsum, process_dir)
             # img_tuner4 = plotter.plot_tiff4(unrolled_array, q1d)
-            img_tuner4 = plotter.plot_tiff4(binned, None, binned=True)
+            img_tuner4 = plotter.plot_tiff4(unrolled_array, None, binned=True)
             img_tuner4()
             plotter.plot_iq(iq_fn, pila_analyzer.num_rows_header+1)
 

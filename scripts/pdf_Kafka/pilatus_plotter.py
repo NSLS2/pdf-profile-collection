@@ -154,7 +154,7 @@ class plot_pilatus(open_figures):
         if mask:
             img_tuner = color_tuner(f, masked_img, histogram=histogram, aspect=aspect)
         else:
-            img_tuner = color_tuner(f, img, histogram=histogra, aspect=aspect)
+            img_tuner = color_tuner(f, img, histogram=histogram, aspect=aspect)
 
         # if title != None:
         #     ax.set_title(title, prop=self.title_prop)
