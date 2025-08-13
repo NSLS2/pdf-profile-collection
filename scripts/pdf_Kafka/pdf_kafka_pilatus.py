@@ -136,8 +136,6 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f"\nStart to stitch {pila_analyzer.run.start['sp_detector']} data: uid = {pila_analyzer.uid}\n")
                 full_imsum, process_dir = pila_analyzer.save_image_sum_T()
                 print(f'\nApply mask {pila_analyzer.stitched_mask = }\n')
-                # mask_img = np.load(pila_analyzer.stitched_mask)
-                # plotter.plot_tiff2(full_imsum, mask_img)
                 img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.stitched_mask)
 
             ## Process pe1c data without stitching 
@@ -145,8 +143,6 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f"\nStart to process {pila_analyzer.run.start['detectors'][0]} data: uid = {pila_analyzer.uid}\n")
                 full_imsum, process_dir = pila_analyzer.flat_filed_pe1c()
                 print(f'\nApply mask {pila_analyzer.mask_pe1c = }\n')
-                # mask_img = np.load(pila_analyzer.mask_pe1c)
-                # plotter.plot_tiff2(full_imsum, mask_img)
                 img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.mask_pe1c)
 
             img_tuner3()
@@ -154,8 +150,9 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             ## pyFai integration: 2D to 1D
             print(f"\nStart to do 2D integration: uid = {pila_analyzer.uid}\n")
             iq_df, iq_fn, unrolled_array, q1d = pila_analyzer.pct_integration(full_imsum, process_dir)
-            # plotter.plot_tiff4(unrolled_array, q1d)
-            plotter.plot_tiff4(unrolled_array, None)
+            # img_tuner4 = plotter.plot_tiff4(unrolled_array, q1d)
+            img_tuner4 = plotter.plot_tiff4(unrolled_array, None)
+            img_tuner4()
             plotter.plot_iq(iq_fn, pila_analyzer.num_rows_header+1)
 
             ## Data reduction: I(Q) to G(r)

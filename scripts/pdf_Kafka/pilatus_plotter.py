@@ -153,20 +153,7 @@ class plot_pilatus(open_figures):
         masked_ = ma.masked_array(img, mask=mask1)
         masked_img = masked_.filled(fill_value=np.nan)
 
-        # vmax = np.nanpercentile(masked_img, 98)
-        # # vmax = 10000
-        # if vmax==np.nan:
-        #    vmax = 10000
-
-        # vmin = np.nanpercentile(masked_img, 10)
-        # if vmin==np.nan:
-        #    vmin = 0
-
-        img_tuner3 = color_tuner(f, masked_img)
-        # img_tuner3()
-        # im = ax.imshow(masked_img, label=self.sample_name, 
-        #                vmin=vmin, vmax=vmax)
-        # f.colorbar(im)
+        img_tuner = color_tuner(f, masked_img)
 
         if title != None:
             ax.set_title(title, prop=self.title_prop)
@@ -179,7 +166,7 @@ class plot_pilatus(open_figures):
         f.canvas.manager.show()
         f.canvas.flush_events()
 
-        return img_tuner3
+        return img_tuner
 
 
 
@@ -198,25 +185,8 @@ class plot_pilatus(open_figures):
         for spine in ax.spines.values():
             spine.set_linewidth(self.spine_width)
 
-        # mask1 = np.load(mask_fn)
-        # masked_ = ma.masked_array(img, mask=mask1)
-        # masked_img = masked_.filled(fill_value=np.nan)
-
-        # vmax = np.nanpercentile(masked_img, 98)
-        # # vmax = 10000
-        # if vmax==np.nan:
-        #    vmax = 10000
-
-        # vmin = np.nanpercentile(masked_img, 10)
-        # if vmin==np.nan:
-        #    vmin = 0
-
         img = unrolled_array.filled(fill_value=np.nan)
-        img_tuner4 = color_tuner(f, img, q_array=q_array)
-        img_tuner4()
-        # im = ax.imshow(masked_img, label=self.sample_name, 
-        #                vmin=vmin, vmax=vmax)
-        # f.colorbar(im)
+        img_tuner = color_tuner(f, img, q_array=q_array)
 
         if title != None:
             ax.set_title(title, prop=self.title_prop)
@@ -228,6 +198,8 @@ class plot_pilatus(open_figures):
 
         f.canvas.manager.show()
         f.canvas.flush_events()
+
+        return img_tuner
 
 
 
