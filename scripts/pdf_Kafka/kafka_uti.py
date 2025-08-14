@@ -17,6 +17,61 @@ class kafka_log():
 
 
 
+def find_nearest(array, value):
+    """find the nearest value in a given array
+
+    Args:
+        array (array_like): input array
+        value (float): target value
+
+    Returns:
+        int: index of the nearest value in the array
+        float: the nearest value in the array
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx, array[idx]
+
+
+
+
+def data_to_numpy(data):
+    """return data as np.ndarray where data.shape[0] == 2
+
+    Args:
+        data (ndarray, pd.Dataframe, list, fn_path): data source
+
+
+    Returns:
+        np.ndarray: if data can be transformed into an array where array.shape[0] == 2
+        None      : if data cannot be transformed into an array
+    """
+
+    if (type(data) is np.ndarray) and (data.shape[0]==2):
+        pass
+
+    elif type(data) is pd.core.frame.DataFrame:
+        x = df.iloc[:,0].to_numpy()
+        y = df.iloc[:,1].to_numpy()
+        data = np.asarray([x ,y])
+
+    elif (type(data) is str) and (os.path.exists(data)):
+        r = get_HeaderRows(data)
+        df = pd.read_csv(data, sep=' ', names=['x', 'y'], skiprows=r)
+        x = df.iloc[:,0].to_numpy()
+        y = df.iloc[:,1].to_numpy()
+        data = np.asarray([x ,y])
+
+    elif (type(data) is list) and (len(data)==2):
+        data = np.asarray(data)
+
+    else:
+        data = None
+
+    return data
+
+
+
 #https://github.com/NSLS2/fxi-profile-collection/blob/main/startup/90-image_util.py
 def bin_ndarray(ndarray, new_shape=None, operation="mean"):
     """
@@ -234,7 +289,70 @@ class auto_bkg():
         
         
 
-        
+
+def iq_saver(fn, df, md, header=['q_A^-1', 'I(q)']):
+    
+    os.makedirs(os.path.dirname(fn), exist_ok=True)
+    
+    with open(fn, mode='w+', encoding='utf-8') as f:
+        f.write('pyFai_poni_information_28ID1_NSLS2_BNL\n')
+        num_row = 1
+        for key, value in md.items():
+            f.write(f'{key} {value}\n')
+            num_row += 1
+    
+    ## Now append the dataframe
+    df.to_csv(fn, encoding='utf-8', mode='a', header=header, index=False, float_format='{:.8e}'.format, sep=' ')
+
+    ## return the number of rows of the header
+    # return num_row
+
+
+
+def pct_integration(img_array, iq_fn, save=True):
+
+    ## perform azimuthalintegration on one image to retain 2D information
+    ## i2d.shape is (self.npt_azim, self.npt_rad) which corresponds the intensity of 2D image cake
+    ## q1d.shape is (self.npt_rad, )
+    i2d, q1d, chi1d = ai.integrate2d(img, npt_rad, 
+                                     unit=UNIT, npt_azim=npt_azim, 
+                                     polarization_factor=polarization, 
+                                     method=('bbox', 'csr', 'cython'), 
+                                     mask=mask0)
+    
+    ## trasnform mask0 (base mask) to the same coordinate space and cast it as type bool
+    intrinsic_mask_unrolled, _, _ = ai.integrate2d(mask0, npt_rad, 
+                                                   unit=UNIT, npt_azim=npt_azim, 
+                                                   polarization_factor=polarization, 
+                                                   mask=mask0)
+    
+    ## Create an array to hold outlier mask
+    outlier_mask_2d = np.zeros_like(i2d)     
+    mask1 = np.array(i2d<1)*1
+    
+    ## Apply percentile filter along radial direction (axis=0)
+    for ii, dd in enumerate(i2d.T):
+        low_limit, high_limit = np.percentile(dd, (low_limit_pcfilter, up_limit_pcfilter))
+        outlier_mask_2d[:,ii] = np.any([dd<low_limit, dd>high_limit, intrinsic_mask_unrolled[:,ii]], axis=0)
+    
+    mask2 = outlier_mask_2d + mask1
+    outlier_mask_2d_masked = ma.masked_array(i2d, mask=mask2)
+    
+    ## calculate mean values along radial direction (axis=0) to make i1d.shape is (self.npt_rad, )
+    i1d = ma.mean(outlier_mask_2d_masked, axis=0)
+    
+    
+    iq_df0 = pd.DataFrame()
+    iq_df0['q'] = q1d
+    iq_df0['I'] = i1d
+    iq_df = iq_df0.dropna()
+
+    if save:
+        md = ai.getPyFAI()
+        iq_saver(iq_fn, iq_df, md)
+        print(f'\n*** {os.path.basename(iq_fn)} saved!! ***\n')
+
+    return iq_df0, i2d, outlier_mask_2d_masked
 
 
     

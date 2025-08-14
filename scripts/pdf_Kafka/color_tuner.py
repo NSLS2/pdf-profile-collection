@@ -11,8 +11,8 @@ class color_tuner():
     def __init__(self, fig, img, aspect='auto', q_array=None, histogram=True):
     
         self.fig = fig
-        # self.ax = fig.gca()
-        # self.ax = self.fig.add_axes([0.1, 0.1, 0.7, 0.8])
+        self.ax = None
+        self.ax_ = None
         self.img = img
         self.vmax = np.round(np.nanpercentile(img, 98), decimals=2)
         self.slider_max = self.vmax+500

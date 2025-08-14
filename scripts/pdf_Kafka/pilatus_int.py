@@ -158,7 +158,8 @@ class Pilatus_Int(Pilatus_sum):
         iq_df0 = pd.DataFrame()
         iq_df0['q'] = q1d
         iq_df0['I'] = i1d
-        iq_df = iq_df0.dropna()
+        # iq_df = iq_df0.dropna()
+        iq_df = iq_df0.fillna(0)
         
         md = ai.getPyFAI()
         _md = {'detector': self.run.start['detectors'][0], 
