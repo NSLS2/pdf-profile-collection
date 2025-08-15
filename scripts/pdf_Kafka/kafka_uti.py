@@ -17,6 +17,30 @@ class kafka_log():
 
 
 
+def azim_to_q(theta, wavelength):
+    return (4*np.pi/wavelength)*np.sin(theta/2)
+
+
+def q_to_azim(q, wavelength):
+    ## q: the input unit is A-1
+    ## wavelength: the input unit is m
+    t1 = q/(4*np.pi/(wavelength*10**10))
+    return 2*np.arcsin(t1)
+
+
+def circle_coords(center=[0.0, 0.0], radius=1.0, total_points=1000):
+    theta = np.linspace(0, 2 * np.pi, total_points) # total_points from 0 to 2*pi radians
+    center_x = center[0]
+    center_y = center[1]
+    x_coords = center_x + radius * np.cos(theta)
+    y_coords = center_y + radius * np.sin(theta)
+    # x = np.arange(0, radius, radius/r_divider)
+    # y = np.sqrt(radius**2 - x**2)
+
+    return np.asarray([x_coords, y_coords])
+
+
+
 def find_nearest(array, value):
     """find the nearest value in a given array
 
@@ -35,7 +59,7 @@ def find_nearest(array, value):
 
 
 
-def data_to_numpy(data):
+def data_to_numpy(data, sep=' '):
     """return data as np.ndarray where data.shape[0] == 2
 
     Args:
@@ -51,13 +75,13 @@ def data_to_numpy(data):
         pass
 
     elif type(data) is pd.core.frame.DataFrame:
-        x = df.iloc[:,0].to_numpy()
-        y = df.iloc[:,1].to_numpy()
+        x = data.iloc[:,0].to_numpy()
+        y = data.iloc[:,1].to_numpy()
         data = np.asarray([x ,y])
 
     elif (type(data) is str) and (os.path.exists(data)):
-        r = get_HeaderRows(data)
-        df = pd.read_csv(data, sep=' ', names=['x', 'y'], skiprows=r)
+        r = get_HeaderRows(data, sep=sep)
+        df = pd.read_csv(data, sep=sep, names=['x', 'y'], skiprows=r)
         x = df.iloc[:,0].to_numpy()
         y = df.iloc[:,1].to_numpy()
         data = np.asarray([x ,y])
