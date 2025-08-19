@@ -227,8 +227,6 @@ class histogram_tuner(plot_tuner_base):
                 *args, 
                 q_array=None, 
                 histogram=True, 
-                sample_name='', 
-                color_str='tab:blue', 
                 **kwargs):
         
         super().__init__(*args, **kwargs)
@@ -240,8 +238,6 @@ class histogram_tuner(plot_tuner_base):
         
         self.histogram = histogram
         # self.data = data_to_numpy(data, sep=sep)
-        self.sample_name = sample_name
-        self.color_str = color_str
 
         gs = GridSpec(nrows=1, ncols=2, width_ratios=[1., 1.])
 
@@ -313,7 +309,7 @@ class data_tuner(plot_tuner_base):
 
         gs = GridSpec(nrows=1, ncols=2, width_ratios=[1., 1.])
 
-        if self.data is not None:
+        if (self.data is not None):
             self.histogram = False  ## When there is iq data, no plotting histogram
             gs.set_width_ratios([1.4, 1.])
             ## plot img array
@@ -430,3 +426,5 @@ class data_tuner(plot_tuner_base):
             self.slider_iq.on_changed(self.update_iq)
             self.bqplus.on_clicked(self.q_plus)
             self.bqminus.on_clicked(self.q_minus)
+
+

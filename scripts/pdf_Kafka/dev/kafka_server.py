@@ -9,10 +9,8 @@ from tiled.client import from_profile, from_uri
 
 
 import importlib
-Pilatus_sum = importlib.import_module("pilatus_sum").Pilatus_sum
-Pilatus_Int = importlib.import_module("pilatus_int").Pilatus_Int
-Pilatus_getpdf = importlib.import_module("pilatus_getpdf").Pilatus_getpdf
-pilaplot = importlib.import_module("pilatus_plotter")
+img_getpdf = importlib.import_module("img_getpdf")
+img_plotter = importlib.import_module("img_plotter")
 kafka_log = importlib.import_module("kafka_uti").kafka_log
 bin_ndarray = importlib.import_module("kafka_uti").bin_ndarray
 
@@ -46,13 +44,6 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
     print(f"Listening to Kafka messages for {beamline_acronym_01}")
     print(f"Listening to Kafka messages for {beamline_acronym_02}")
 
-    # print("\n")
-    # print(f"{masks_path = }\n")
-    # print(f"{poni_fn = }\n")
-    # print(f"{stitched_mask_fn = }\n")
-    # print(f"{cfg_fn = }\n")
-    # print(f"{bkg_fn = }\n")
-
     
     def print_message(consumer, doctype, doc):
         name, message = doc
@@ -73,14 +64,14 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             except KeyError:
                 print(f"\nThis document has no topic.\n")
                   
-            global pila_analyzer
+            global img_analyzer
             uid = message['uid']
             meta = tiled_client[uid].start
             print(f"{meta['calibration_md']['Distance'] = }")
             
-            pila_analyzer = Pilatus_getpdf(uid, tiled_client, sandbox_tiled, ini_config)
+            img_analyzer = img_getpdf.img_getpdf(uid, tiled_client, sandbox_tiled, ini_config)
             
-            print(f'{pila_analyzer.is_pdf_xrd() = }')
+            print(f'{img_analyzer.is_pdf_xrd() = }')
         
         
         elif (name == 'stop') and ('topic' not in message):
@@ -96,7 +87,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f"\nThis document has no topic.\n")
 
             stream_name = list(message['num_events'].keys())
-            pila_analyzer.stream_name = stream_name
+            img_analyzer.stream_name = stream_name
             print(f'\n{stream_name = }\n')
         
         
@@ -113,7 +104,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f"\nThis document has no topic.\n")
 
             dksub_uid = message["data"]['tiled_dk_sub_image']['uid']
-            pila_analyzer.dksub_uid = dksub_uid
+            img_analyzer.dksub_uid = dksub_uid
 
 
 
@@ -130,40 +121,51 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             except KeyError:
                 print(f"\nThis document has no topic.\n")
 
-            plotter = pilaplot.plot_pilatus(pila_analyzer.sample_name, color_str=k_log.color_str)
+            ## Start plotter for visualization
+            plotter = img_plotter.img_plotter(img_analyzer.sample_name, color_str=k_log.color_str)
 
             ## Sum three images at three positions
             if message['num_events']['primary']==3:
-                print(f"\nStart to stitch {pila_analyzer.run.start['sp_detector']} data: uid = {pila_analyzer.uid}\n")
-                full_imsum, process_dir = pila_analyzer.save_image_sum_T()
-                print(f'\nApply mask {pila_analyzer.stitched_mask = }\n')
-                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.stitched_mask, mask=False, histogram=True)
-
+                print(f"\nStart to stitch {img_analyzer.run.start['sp_detector']} data: uid = {img_analyzer.uid}\n")
+                img_analyzer.save_img_pilatus()
+                print(f'\nApply mask {img_analyzer.stitched_mask = }\n')
+                
             ## Process pe1c data without stitching 
             elif message['num_events']['primary']==1:
-                print(f"\nStart to process {pila_analyzer.run.start['detectors'][0]} data: uid = {pila_analyzer.uid}\n")
-                full_imsum, process_dir = pila_analyzer.flat_filed_pe1c()
-                print(f'\nApply mask {pila_analyzer.mask_pe1c = }\n')
-                img_tuner3 = plotter.plot_tiff3(full_imsum, pila_analyzer.mask_pe1c, mask=False, histogram=True)
-
-            img_tuner3()
+                print(f"\nStart to process {img_analyzer.run.start['detectors'][0]} data: uid = {img_analyzer.uid}\n")
+                img_analyzer.save_img_perkin()
+                print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
+                
+            ## Plot unmasked 2D image rings with histogram
+            tiff3_tuner = plotter.plot_tiff3(img_analyzer.process_img, img_analyzer.mask_array, mask=False, histogram=True)
+            tiff3_tuner()
 
             ## pyFai integration: 2D to 1D
-            print(f"\nStart to do 2D integration: uid = {pila_analyzer.uid}\n")
-            iq_df, iq_fn, unrolled_array = pila_analyzer.pct_integration(full_imsum, process_dir)
+            print(f"\nStart to do 2D integration: uid = {img_analyzer.uid}\n")
+            iq_df, iq_fn, unrolled_array = img_analyzer.pct_integration()
             # img_tuner4 = plotter.plot_tiff4(unrolled_array, iq_df.iloc[:,0])
-            img_tuner4 = plotter.plot_tiff4(unrolled_array, None, binned=True)
-            img_tuner4()
-            plotter.plot_iq(iq_fn, pila_analyzer.num_rows_header+1)
+            
+            ## Plot masked 2D image rings with iq data
+            maskImg_iq_tuner = plotter.plot_maskImg_iq(img_analyzer.process_img,  
+                                                        img_analyzer.mask_array, 
+                                                        unrolled_array, 
+                                                        iq_fn,
+                                                        img_analyzer.poni_fn, 
+                                                        )
+            maskImg_iq_tuner()
+
+            ## Plot masked and unrolled image cake
+            # tiff4_tuner4 = plotter.plot_tiff4(unrolled_array, None, binned=True)
+            # tiff4_tuner4()
 
             ## Data reduction: I(Q) to G(r)
-            if (pila_analyzer.do_reduction) and (pila_analyzer.is_pdf_xrd()=='PDF'):
-            # if pila_analyzer.is_pdf_xrd=='PDF':
-                print(f"\nStart to reduce sq, fq, gr: uid = {pila_analyzer.uid}\n")
+            if (img_analyzer.do_reduction) and (img_analyzer.acq_mode()=='PDF'):
+            # if img_analyzer.acq_mode=='PDF':
+                print(f"\nStart to reduce sq, fq, gr: uid = {img_analyzer.uid}\n")
                 # iq_array = iq_df.to_numpy().T
-                sqfqgr_path = pila_analyzer.get_gr(iq_df, process_dir)
-                bkg_scale = pila_analyzer.pdfconfig().bgscale[0]
-                bkg_fn = pila_analyzer.pdfconfig_dict['backgroundfile']
+                sqfqgr_path = img_analyzer.get_gr(iq_df)
+                bkg_scale = img_analyzer.pdfconfig().bgscale[0]
+                bkg_fn = img_analyzer.pdfconfig_dict['backgroundfile']
                 plotter.plot_sqfqgr(sqfqgr_path, bkg_scale, bkg_fn)
             
             else:

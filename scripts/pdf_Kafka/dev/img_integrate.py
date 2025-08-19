@@ -5,7 +5,7 @@ import numpy.ma as ma
 import pandas as pd
 
 import importlib
-Pilatus_sum = importlib.import_module("pilatus_sum").Pilatus_sum
+imgData_2D = importlib.import_module("imgData_2D")
 
 
 def iq_saver(fn, df, md, header=['q_A^-1', 'I(q)']):
@@ -24,23 +24,27 @@ def iq_saver(fn, df, md, header=['q_A^-1', 'I(q)']):
     return num_row
 
 
-class Pilatus_Int(Pilatus_sum):
+class img_integrate(imgData_2D.imgData_2D):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.num_rows_header = 1
-        self.mask_array = None
-        self.poni_fn = None
+        self.ai = None
+
 
     @property
     def merged_poin(self):
         n = self.get('PATH', 'merged_poin', fallback='merged.poni')
 
-        if self.is_pdf_xrd() == 'PDF':
+        if self.acq_mode() == 'PDF':
             n_folder = self.pilatus_PDF
-        else:
+
+        elif self.acq_mode() == 'XRD':
             n_folder = self.pilatus_XRD
+
+        else:
+            n_folder = self.pilatus_PDF
 
         return os.path.join(n_folder, n)
     
@@ -49,10 +53,14 @@ class Pilatus_Int(Pilatus_sum):
     def stitched_mask(self):
         n = self.get('PATH', 'stitched_mask', fallback='stitched_mask.npy')
 
-        if self.is_pdf_xrd() == 'PDF':
+        if self.acq_mode() == 'PDF':
             n_folder = self.pilatus_PDF
-        else:
+
+        elif self.acq_mode() == 'XRD':
             n_folder = self.pilatus_XRD
+
+        else:
+            n_folder = self.pilatus_PDF
 
         return os.path.join(n_folder, n)
     
@@ -67,15 +75,24 @@ class Pilatus_Int(Pilatus_sum):
         n = self.get('PATH', 'pe1c_XRD', fallback='pe1c_XRD')
         return os.path.join(self.config_base, n)
 
+    @property
+    def pe2c_SAXS(self):
+        n = self.get('PATH', 'pe2c_PDF', fallback='pe2c_SAXS')
+        return os.path.join(self.config_base, n)
+    
 
     @property
     def poni_pe1c(self):
         n = self.get('PATH', 'poni_pe1c', fallback='xpdAcq_calib_info.poni')
 
-        if self.is_pdf_xrd() == 'PDF':
+        if self.acq_mode() == 'PDF':
             n_folder = self.pe1c_PDF
+
+        elif self.acq_mode() == 'XRD':
+            n_folder = self.pilatus_XRD
+        
         else:
-            n_folder = self.pe1c_XRD
+            n_folder = self.pe1c_PDF
 
         return os.path.join(n_folder, n)
     
@@ -84,12 +101,63 @@ class Pilatus_Int(Pilatus_sum):
     def mask_pe1c(self):
         n = self.get('PATH', 'mask_pe1c', fallback='Mask.npy')
 
-        if self.is_pdf_xrd() == 'PDF':
+        if self.acq_mode() == 'PDF':
             n_folder = self.pe1c_PDF
-        else:
+        
+        elif self.acq_mode() == 'XRD':
             n_folder = self.pe1c_XRD
+        
+        else:
+            n_folder = self.pe1c_PDF
 
         return os.path.join(n_folder, n)
+
+
+    @property
+    def poni_pe2c(self):
+        n = self.get('PATH', 'poni_pe2c', fallback='xpdAcq_calib_info.poni')
+        return os.path.join(self.pe2c_SAXS, n)
+    
+
+    @property
+    def mask_pe2c(self):
+        n = self.get('PATH', 'mask_pe2c', fallback='Mask.npy')
+        return os.path.join(self.pe2c_SAXS, n)
+
+
+    @property
+    def poni_fn(self):
+        if 'pilatus' in self.detector:
+            return self.merged_poin
+            
+
+        elif 'pe1c' in self.detector:
+            return self.poni_pe1c
+            
+
+        elif 'pe2c' in self.detector:
+            return self.poni_pe2c
+
+        else:
+            return self.poni_pe1c
+
+
+    @property
+    def mask_array(self):
+        if 'pilatus' in self.detector:
+            return np.load(self.stitched_mask)
+            
+
+        elif 'pe1c' in self.detector:
+            return np.load(self.mask_pe1c)
+            
+
+        elif 'pe2c' in self.detector:
+            return np.load(self.mask_pe2c)
+
+        else:
+            return np.load(self.mask_pe1c)
+
 
 
     @property
@@ -117,48 +185,24 @@ class Pilatus_Int(Pilatus_sum):
     def ul(self):
         return self.getfloat('INTEGRATION', 'up_limit_pcfilter', fallback=99.0) 
 
-    @property
-    def mask_array(self):
-        if self.run.start['detectors'][0] == 'pilatus1':
-            return np.load(self.stitched_mask)
             
-
-        elif self.run.start['detectors'][0] == 'pe1c':
-            return np.load(self.mask_pe1c)
-            
-
-        elif self.run.start['detectors'][0] == 'pe2c':
-            return self.mask_array = np.load(self.mask_pe2c)
-            
-    @property
-    def poni_fn(self):
-        if self.run.start['detectors'][0] == 'pilatus1':
-            return self.merged_poin
-            
-
-        elif self.run.start['detectors'][0] == 'pe1c':
-            return self.poni_pe1c
-            
-
-        elif self.run.start['detectors'][0] == 'pe2c':
-            return self.poni_pe2c
 
 
     
-    def pct_integration(self, full_imsum, process_dir):
+    def pct_integration(self):
 
-        ai = pyFAI.load(self.poni_fn)
+        self.ai = pyFAI.load(self.poni_fn)
         
         ## perform azimuthalintegration on one image to retain 2D information
         ## i2d.shape is (self.npt_azim, self.npt_rad) which corresponds the intensity of 2D image cake
         ## q1d.shape is (self.npt_rad, )
-        i2d, q1d, chi1d = ai.integrate2d(full_imsum, self.npt_rad, 
+        i2d, q1d, chi1d = self.ai.integrate2d(self.process_img, self.npt_rad, 
                                          unit=self.UNIT, npt_azim=self.npt_azim, 
                                          polarization_factor=self.polarization, 
                                          mask=self.mask_array) 
         
         ## trasnform self.mask_array (base mask) to the same coordinate space and cast it as type bool
-        intrinsic_mask_unrolled, _, _ = ai.integrate2d(self.mask_array, self.npt_rad, 
+        intrinsic_mask_unrolled, _, _ = self.ai.integrate2d(self.mask_array, self.npt_rad, 
                                                        unit=self.UNIT, npt_azim=self.npt_azim, 
                                                        polarization_factor=self.polarization, 
                                                        mask=self.mask_array)
@@ -184,7 +228,7 @@ class Pilatus_Int(Pilatus_sum):
         # iq_df = iq_df0.dropna()
         iq_df = iq_df0.fillna(0)
         
-        md = ai.getPyFAI()
+        md = self.ai.getPyFAI()
         _md = {'detector': self.run.start['detectors'][0], 
                'uid':self.full_uid, 
                'time': self.run.start['time'], 
@@ -195,14 +239,20 @@ class Pilatus_Int(Pilatus_sum):
                }
         md.update(_md)
 
-        if self.run.start['detectors'][0] == 'pilatus1':
-            iq_fn = os.path.join(process_dir, f'{self.file_name_prefix}_sum.iq')
+        if 'pilatus' in self.detector:
+            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.iq')
 
-        elif self.run.start['detectors'][0] == 'pe1c':
-            iq_fn = os.path.join(process_dir, f'{self.file_name_prefix}_flat.iq')
+        elif 'pe1c' in self.detector:
+            if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+                iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.iq')
+            else:
+                iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
+
+        elif 'pe2c' in self.detector':
+            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_SAXS.iq')
 
         else:
-            iq_fn = os.path.join(process_dir, f'{self.file_name_prefix}_process.iq')
+            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
         
         ## num_row will be the number of rows of the header in saved iq data file
         self.num_rows_header = iq_saver(iq_fn, iq_df, md)
