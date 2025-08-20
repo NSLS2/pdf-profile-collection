@@ -121,6 +121,8 @@ class img_plotter(open_figures):
         img_tuner.ax2.set_ylabel('I(Q)', fontdict=self.xylabel_prop)
         img_tuner.ax2.legend(prop=self.legend_prop)
 
+        # img_tuner.fig.subplots_adjust(left=0.08, right=0.97, top=0.97, bottom=0.1)
+
         f.canvas.manager.show()
         f.canvas.flush_events()
 
