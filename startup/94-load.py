@@ -27,6 +27,8 @@ if xpdacq_version < (1, 1, 0):
                                     ring_current, fb)
         pe1c = xpd_pe1c # alias
 
+    # ## Add by CHLin on 2025/08/19 for testing
+    # pe1c = pe2c
     configure_device(area_det=pe1c, shutter=fs,
                     temp_controller=eurotherm, #changed from None to eurotherm on 3/22/19 - DPO
                     db=db,

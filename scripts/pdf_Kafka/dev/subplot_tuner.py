@@ -536,7 +536,7 @@ class ThreeSub_tuner(plot_tuner_base):
         if (self.data is not None) and (self.unrolled_array is not None):
             
             gs.set_width_ratios([1.2, 1.])
-            gs.set_height_ratios([1.4, 1.])
+            gs.set_height_ratios([1., 1.])
             ## plot img array at the top left corner
             self.ax1 = self.fig.add_subplot(gs[:,0])
             self.im1 = is_q_space(None, self.img, self.ax1, self.vmax, self.vmin, self.aspect)
@@ -554,8 +554,8 @@ class ThreeSub_tuner(plot_tuner_base):
             self.ax3 = self.fig.add_subplot(gs[1,1])
             self.im3 = is_q_space(self.q_array, self.unrolled_array, self.ax3, self.vmax, self.vmin, 'auto')
             ax_divider3 = make_axes_locatable(self.ax3)
-            cax3 = ax_divider3.append_axes("top", size="5%", pad="3%")
-            self.cbar3 = self.fig.colorbar(self.im3, cax=cax3, location='top')
+            cax3 = ax_divider3.append_axes("left", size="5%", pad="3%")
+            self.cbar3 = self.fig.colorbar(self.im3, cax=cax3, location='left')
 
             self.fig.subplots_adjust(left=0.1, right=0.95, )
 

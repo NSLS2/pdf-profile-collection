@@ -248,7 +248,7 @@ class img_integrate(imgData_2D.imgData_2D):
             else:
                 iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
 
-        elif 'pe2c' in self.detector':
+        elif 'pe2c' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_SAXS.iq')
 
         else:

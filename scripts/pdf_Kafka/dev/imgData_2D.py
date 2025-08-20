@@ -118,9 +118,19 @@ class imgData_2D(imgData_config):
         return self.getboolean('SUM', 'use_flat_field_pe1c', fallback=False)
     
     @property
+    def use_flat_field_pe2c(self):
+        return self.getboolean('SUM', 'use_flat_field_pe2c', fallback=False)
+
+    @property
     def flat_field_pe1c(self):
         n_folder = self.get('PATH', 'flat_filed', fallback='flat_filed')
         n = self.get('PATH', 'flat_field_pe1c', fallback='flat_field_pe1c.tiff')
+        return os.path.join(self.config_base, n_folder, n)
+    
+    @property
+    def flat_field_pe2c(self):
+        n_folder = self.get('PATH', 'flat_filed', fallback='flat_filed')
+        n = self.get('PATH', 'flat_field_pe2c', fallback='flat_field_pe2c.tiff')
         return os.path.join(self.config_base, n_folder, n)
     
     @property
@@ -166,10 +176,10 @@ class imgData_2D(imgData_config):
             return os.path.join(self.data_dir, f'{self.detector}')
 
         elif 'pe1c' in self.detector:
-            return os.path.join(self.data_dir, f'{self.detectors}')
+            return os.path.join(self.data_dir, f'{self.detector}')
 
         elif 'pe2c' in self.detector:
-            return os.path.join(self.data_dir, f'{self.detectors}')
+            return os.path.join(self.data_dir, f'{self.detector}')
 
         else:
             return os.path.join(self.data_dir, 'unkown_det')
@@ -265,7 +275,13 @@ class imgData_2D(imgData_config):
         self.process_img = self.sandbox_tiled[self.dksub_uid].read()
         
         if self.use_flat_field_pe1c or self.use_flat_field_pe2c:
-            flat_field = tifffile.imread(self.flat_field_pe1c)
+            if 'pe1c' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+            elif 'pe2c' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe2c)
+            else:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+
             self.process_img = self.process_img / flat_field
 
         os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis

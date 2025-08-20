@@ -67,11 +67,11 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             global img_analyzer
             uid = message['uid']
             meta = tiled_client[uid].start
-            print(f"{meta['calibration_md']['Distance'] = }")
+            print(f"\n{meta['calibration_md']['Distance'] = }\n")
             
             img_analyzer = img_getpdf.img_getpdf(uid, tiled_client, sandbox_tiled, ini_config)
             
-            print(f'{img_analyzer.is_pdf_xrd() = }')
+            print(f'\n{img_analyzer.acq_mode() = }\n')
         
         
         elif (name == 'stop') and ('topic' not in message):
@@ -137,10 +137,10 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                 print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
                 
             ## Plot unmasked 2D image rings with histogram
-            tiff3_tuner = plotter.plot_tiff3(img_analyzer.process_img, img_analyzer.mask_array, mask=False, histogram=True)
+            tiff3_tuner = plotter.plot_tiff3(img_analyzer.process_img, img_analyzer.mask_array, use_mask=False, histogram=True)
             tiff3_tuner()
 
-            ## pyFai integration: 2D to 1D
+            ## pyFai integration: 2D to 1Dcolor_str
             print(f"\nStart to do 2D integration: uid = {img_analyzer.uid}\n")
             iq_df, iq_fn, unrolled_array = img_analyzer.pct_integration()
             # img_tuner4 = plotter.plot_tiff4(unrolled_array, iq_df.iloc[:,0])
@@ -151,6 +151,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                                                         unrolled_array, 
                                                         iq_fn,
                                                         img_analyzer.poni_fn, 
+                                                        binning=2, 
                                                         )
             maskImg_iq_tuner()
 

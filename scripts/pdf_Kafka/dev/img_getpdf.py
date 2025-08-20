@@ -88,6 +88,7 @@ class img_getpdf(img_integrate.img_integrate):
         # print(self.pdfconfig())
         
         pdfgetter = get_pdf(self.pdfconfig(), iq_df, plot_setting='OFF')
+        # sqfqgr_path = ''
 
         if 'pilatus' in self.detector:
             sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sum', pdfgetter)
@@ -95,6 +96,8 @@ class img_getpdf(img_integrate.img_integrate):
         elif 'pe1c' in self.detector:
             if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
                 sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_flat', pdfgetter)
+            else:
+                sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sub', pdfgetter)
 
         else:
             sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sub', pdfgetter)

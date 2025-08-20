@@ -31,7 +31,7 @@ class img_plotter(open_figures):
         self.labelsize = 14
         self.legend_prop = {'weight':'regular', 'size':14}
         self.title_prop = {'weight':'regular', 'size':12}
-        self.xylabel_prop = {'weight':'regular', 'size':16}
+        self.xylabel_prop = {'weight':'regular', 'size':14}
         self.color_str = random_color(previous_color=color_str)
         self.spine_width = 2
         # self.date, self.time = _readable_time(metadata_dic['time'])
@@ -39,7 +39,7 @@ class img_plotter(open_figures):
 
 
 
-    def plot_tiff3(self, img, mask, mask=False, histogram=False, aspect=None):
+    def plot_tiff3(self, img, mask, use_mask=False, histogram=False, aspect=None):
         
         try:
             f = plt.figure(self.fig[0])
@@ -59,7 +59,7 @@ class img_plotter(open_figures):
         masked_ = ma.masked_array(img, mask=mask_array)
         masked_img = masked_.filled(fill_value=np.nan)
 
-        if mask:
+        if use_mask:
             img_tuner = histogram_tuner(f, masked_img, histogram=histogram, aspect=aspect)
         else:
             img_tuner = histogram_tuner(f, img, histogram=histogram, aspect=aspect)
@@ -77,7 +77,7 @@ class img_plotter(open_figures):
 
         
 
-    def plot_maskImg_iq(self, img, mask, unrolled_array, iq_fn, poni_fn, aspect=None):
+    def plot_maskImg_iq(self, img, mask, unrolled_array, iq_fn, poni_fn, aspect=None, binning=1):
         
         try: 
             f = plt.figure(self.fig[1])
@@ -97,12 +97,25 @@ class img_plotter(open_figures):
         masked_ = ma.masked_array(img, mask=mask_array)
         masked_img = masked_.filled(fill_value=np.nan)
         
-        img_tuner = ThreeSub_tuner(f, masked_img, unrolled_array = None, aspect=aspect, data=iq_df, poni_fn=poni_fn)
+        new_shape = (int(unrolled_array.shape[0]/binning), int(unrolled_array.shape[1]/binning))
+        bin_unrolled = bin_ndarray(unrolled_array, new_shape=new_shape)
+
+        img_tuner = ThreeSub_tuner(f, masked_img, 
+                                   unrolled_array=bin_unrolled, 
+                                   aspect=aspect, 
+                                   data=iq_df, 
+                                   poni_fn=poni_fn, 
+                                   color_str=self.color_str, 
+                                   sample_name = self.sample_name, 
+                                   )
 
         # if title != None:
         #     ax.set_title(title, prop=self.title_prop)
         # else:
         #     pass
+
+        for spine in img_tuner.ax2.spines.values():
+                spine.set_linewidth(self.spine_width)
 
         img_tuner.ax2.set_xlabel('Q (A-1)', fontdict=self.xylabel_prop)
         img_tuner.ax2.set_ylabel('I(Q)', fontdict=self.xylabel_prop)
