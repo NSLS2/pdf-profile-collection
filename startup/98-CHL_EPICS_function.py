@@ -90,8 +90,8 @@ def measurement_data(): # .......Captures metadata
     return info_dict
 
 
-
-def pdf_RE4(dets, exposure, extra_md={}):
+def pila_3pos(dets, exposure, extra_md={}):
+# def pdf_RE4(dets, exposure, extra_md={}):
 # def pdf_RE4(dets, exposure, areaDet_name='pe1c', metadata={}):
     
     """
@@ -143,7 +143,7 @@ def pdf_RE4(dets, exposure, extra_md={}):
             "sp_computed_exposure": computed_exposure,
             "sp_type": "bps.trigger",
             "sp_uid": str(uuid.uuid4()),
-            "sp_plan_name": "pdf_RE4",
+            "sp_plan_name": "pila_3pos",
             "sp_detector": area_det.name, 
             "detectors": [area_det.name],
             # "data_keys": "pe1c_image", 
@@ -200,248 +200,185 @@ def pdf_RE4(dets, exposure, extra_md={}):
 
 
 
+## Revise jog for pilatus 3-position scan
+def rocking_ct_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
+    """Take a count while "rocking" the y-position"""
+    _md = md or {}
+    sp_md = yield from _xpd_pre_plan(dets, exposure)
+    _md.update(sp_md)
+    _md["plan_name"] = "jo_pila_3pos"
+    _md["jog_md"] = {"start": start, "stop": stop, "motor": motor.name}
+
+    @bpp.reset_positions_decorator([motor.velocity])
+    def per_shot(dets):
+        nonlocal start, stop
+        yield from bps.mv(motor, start)  # got to initial position
+        yield from bps.mv(motor.velocity, abs(stop - start) / exposure, timeout=1)  # set velocity
+        gp = short_uid("rocker")
+        yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+        # yield from bps.trigger_and_read(dets)  # collect off detector
+        yield from pila_3pos(dets, exposure)
+        yield from bps.wait(group=gp)
+        start, stop = stop, start
+
+    return (yield from future_count(dets, md=_md, 
+                                    per_shot=per_shot if start != stop else bps.trigger_and_read, 
+                                    num=num))
 
 
-# def pdf_pila(dets, exposure, extra_md={}, det_x_pos=None, det_y_pos=None, det_z_pos=None):
-# # def pdf_RE4(dets, exposure, areaDet_name='pe1c', metadata={}):
+def jog_pila(dets, exposure_s, motor, start, stop, md=None):
+    """pass total exposure time (in seconds), motor name (i.e. Grid_Y), start and stop positions for the motor."""
+    # yield from rocking_ct([pilatus], exposure_s, motor, start, stop)
+    yield from rocking_ct_pila(dets, exposure_s, motor, start, stop, md=md)
+
+
+
+
+# class Cam(AreaDetector):
+#     # pass
+
+#     acquire = Cpt(EpicsSignal, 'cam1:Acquire')
+#     expousre_time = Cpt(EpicsSignal, 'cam1:AcquireTime', kind = 'config')
+#     acquire_period = Cpt(EpicsSignal, 'cam1:AcquirePeriod', kind = 'config')
+#     num_exposure = Cpt(EpicsSignal, 'cam1:NumExposures', kind = 'config')
+#     ArrayData = Cpt(EpicsSignal, 'image1:ArrayData', kind = 'normal')
+#     # ArraySize1 = Cpt(EpicsSignalRO, 'image1:ArraySize1_RBV', kind = 'config')
+#     # ArraySize2 = Cpt(EpicsSignalRO, 'image1:ArraySize2_RBV', kind = 'config')
+#     ArraySize0 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize0_RBV', kind = 'config')
+#     ArraySize1 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize1_RBV', kind = 'config')
+#     ArraySize2 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize2_RBV', kind = 'config')
     
-#     """
-#     Take three readings from pilatus1 with given exposure time
+#     # image = Cpt(ImagePlugin, 'image1:', kind = 'normal')
+#     # tiff = Cpt(TIFFPlugin, 'TIFF1:',
+#     #         write_path_template='/nsls2/data/pdf/legacy/raw/cam1/%Y/%m/%d/',
+#     #         root='/nsls2/data/pdf/legacy/raw')
 
-#     Parameters
-#     ----------
-#     dets : list
-#         list of 'readable' objects. default to area detector
-#         linked to xpdAcq.
-#     exposure : float
-#         total time of exposrue in seconds
+#     def grab_frame(self):
 
-#     Notes
-#     -----
-#     area detector being triggered will  always be the one configured
-#     in global state. To find out which these are, please using
-#     following commands:
+#         def is_done(value, old_value, **kwargs):
+#             if old_value == 1 and value ==0:
+#                 return True
+#             return False
 
-#         >>> xpd_configuration['area_det']
+#         status = SubscriptionStatus(self.acquire, run=False, callback=is_done)
 
-#     to see which device is being linked
-#     """
-
-#     # Need to configure xpd_configuration to pilatus1 in bsui   
-#     area_det = xpd_configuration["area_det"]       
+#         self.acquire.put(1)
+#         return status
     
-#     # TODO: check if _configure_area_det for pilatus
-#     # setting up area_detector
-#     (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
-    
-#     # update md
-#     # md = extra_md
-#     _md = ChainMap(
-#         {
-#             "sp_time_per_frame": acq_time,
-#             "sp_num_frames": num_frame,
-#             "sp_requested_exposure": exposure,
-#             "sp_computed_exposure": computed_exposure,
-#             "sp_type": "bps.trigger",
-#             "sp_uid": str(uuid.uuid4()),
-#             "sp_plan_name": "pdf_RE4",
-#             "sp_detector": area_det.name, 
-#             "detectors": [area_det.name],
-#             # "data_keys": "pe1c_image", 
-#         },
-#     )
-#     _md.update(extra_md)
+#     def trigger(self):
+#         #self.grab_frame().wait()
+#         # return self.grab_frame()
+#         # return (yield from self.grab_frame2())
+#         return self.grab_frame()
 
-#     if xpd_configuration["area_det"].name == 'pilatus1':
-#         pilatus_position = {"Grid_X": Grid_X.position, 
-#                             "Grid_Y": Grid_Y.position,
-#                             "Grid_Z": Grid_Z.position,
-#         }  
 
-#         _md.update(pilatus_position)
+
+# Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
+
+
+# def save_Cam1_tiff(is_plot=True, is_save=True):
+#     new_shape = (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(), Cam1.ArraySize0.get())
+#     data = np.reshape(Cam1.ArrayData.get(), new_shape)
     
-#     @bpp.stage_decorator([area_det])
+#     if is_plot:
+#         plt.figure()
+#         plt.imshow(data.mean(axis=2, dtype=np.float32))
+    
+#     if is_save:
+#         fn_path = '/home/xf28id1/Documents/raw/cam1'
+#         fn_name = auto_name_file('', '.tiff', fn_path)
+#         skimage.io.imsave(fn_name, data.mean(axis=2, dtype=np.float32))
+
+
+
+# class PDFCam1(AreaDetector):
+#     image = Cpt(ImagePlugin, 'image1:')
+#     _default_configuration_attrs = (
+#         AreaDetector._default_configuration_attrs +
+#         ('images_per_set', 'number_of_sets'))
+
+#     tiff = Cpt(XPDTIFFPlugin, 'TIFF1:', #- MA
+#              #write_path_template='Z:/data/pe1_data/%Y/%m/%d', #- DO
+#              #write_path_template='J:\\%Y\\%m\\%d\\', #- DO
+#              #write_path_template='Z:/img/%Y/%m/%d/', #- MA
+#              write_path_template='/home/xf28id1/Documents/raw/cam1/temp/', 
+#              #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
+#              #read_path_template='/nsls2/data/pdf/legacy/raw/cam1/%Y/%m/%d/', #- DO
+#              read_path_template='/home/xf28id1/Documents/raw/cam1/temp/', 
+#              #root='/nsls2/data/pdf/legacy/raw/cam1/', #-DO
+#              #root='/SHARE/img/', #-MA
+#              root='/home/xf28id1/Documents/raw/cam1/temp/', 
+#              cam_name='cam',  # used to configure "tiff squashing" #-MA
+#              proc_name='proc',  # ditto #-MA
+#              read_attrs=[]) #- MA  
+#     # hdf5 = C(XPDHDF5Plugin, 'HDF1:',
+#     #          write_path_template='G:/pe1_data/%Y/%m/%d/',
+#     #          read_path_template='/direct/XF28ID2/pe1_data/%Y/%m/%d/',
+#     #          root='/direct/XF28ID2/', reg=db.reg)
+
+#     proc = Cpt(ProcessPlugin, 'Proc1:')
+
+#     # These attributes together replace `num_images`. They control
+#     # summing images before they are stored by the detector (a.k.a. "tiff
+#     # squashing").
+#     detector_type = Cpt(Signal, value='Perkin', kind='config')
+#     images_per_set = Cpt(Signal, value=1, add_prefix=())
+#     number_of_sets = Cpt(Signal, value=1, add_prefix=())
+
+#     stats1 = Cpt(StatsPluginV33, 'Stats1:')
+#     stats2 = Cpt(StatsPluginV33, 'Stats2:')
+#     stats3 = Cpt(StatsPluginV33, 'Stats3:')
+#     stats4 = Cpt(StatsPluginV33, 'Stats4:')
+#     stats5 = Cpt(StatsPluginV33, 'Stats5:')
+
+#     roi1 = Cpt(ROIPlugin, 'ROI1:')
+#     roi2 = Cpt(ROIPlugin, 'ROI2:')
+#     roi3 = Cpt(ROIPlugin, 'ROI3:')
+#     roi4 = Cpt(ROIPlugin, 'ROI4:')
+
+#     # dark_image = C(SavedImageSignal, None)
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.stage_sigs.update([(self.cam.trigger_mode, 'Internal'),
+#                                ])
+
+
+
+# class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
+#     pass
+
+
+# Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
+#             plugin_name='tiff')
+
+
+# from ophyd.areadetector.trigger_mixins import SingleTrigger
+# from ophyd.areadetector.detectors import PvcamDetector, AreaDetector
+
+# class MyDetector(SingleTrigger, Cam):
+#     pass
+
+# prefix = 'XF:28ID1-BI{Cam:1}'
+# CamS = MyDetector(prefix, name='CamS')
+
+
+# def cam_BS_scan(det, md=None):
+#     # det = Cam1
+#     _md = {}
+#     _md.update(md or {})
+    
+#     @bpp.stage_decorator([det])
 #     @bpp.run_decorator(md=_md)
-#     def pdf_RE_inner(area_det, det_x_pos=det_x_pos, det_y_pos=det_y_pos, det_z_pos=det_z_pos):
-#         # _md = {'detectors':[det.name]}
-#         # _md.update(md or {})
-        
-#         def trigger_det(stream_name):
-#             ret = {}
-#             yield from bps.trigger(area_det, wait=True)
-#             yield from bps.create(name=stream_name)
-#             reading = (yield from bps.read(area_det))
-#             # print(f"reading = {reading}")
-#             ret.update(reading)
-#             yield from bps.save()
-
-#         if area_det.name == 'pe1c':
-#             yield from periodic_dark(trigger_det(f"PDF_{area_det.name}"))
-                
-#         elif area_det.name == 'pilatus1':
-#             if det_x_pos==None and det_y_pos==None:
-#                 det_x_pos = [40.644, 31.356, 36]
-#                 det_y_pos = [-3.356, -12.644, -8]
-#             else:
-#                 pass
-            
-#             for i in range(len(det_x_pos)):
-#                 # Grid_X.move(det_x[i])
-#                 # Grid_Y.move(det_y[i])
-#                 yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
-#                 yield from periodic_dark(trigger_det(f"PDF_{area_det.name}_{i}"))
-                    
-                
-#     yield from pdf_RE_inner(area_det)
-
-
-
-
-class Cam(AreaDetector):
-    # pass
-
-    acquire = Cpt(EpicsSignal, 'cam1:Acquire')
-    expousre_time = Cpt(EpicsSignal, 'cam1:AcquireTime', kind = 'config')
-    acquire_period = Cpt(EpicsSignal, 'cam1:AcquirePeriod', kind = 'config')
-    num_exposure = Cpt(EpicsSignal, 'cam1:NumExposures', kind = 'config')
-    ArrayData = Cpt(EpicsSignal, 'image1:ArrayData', kind = 'normal')
-    # ArraySize1 = Cpt(EpicsSignalRO, 'image1:ArraySize1_RBV', kind = 'config')
-    # ArraySize2 = Cpt(EpicsSignalRO, 'image1:ArraySize2_RBV', kind = 'config')
-    ArraySize0 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize0_RBV', kind = 'config')
-    ArraySize1 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize1_RBV', kind = 'config')
-    ArraySize2 = Cpt(EpicsSignalRO, 'TIFF1:ArraySize2_RBV', kind = 'config')
-    
-    # image = Cpt(ImagePlugin, 'image1:', kind = 'normal')
-    # tiff = Cpt(TIFFPlugin, 'TIFF1:',
-    #         write_path_template='/nsls2/data/pdf/legacy/raw/cam1/%Y/%m/%d/',
-    #         root='/nsls2/data/pdf/legacy/raw')
-
-    def grab_frame(self):
-
-        def is_done(value, old_value, **kwargs):
-            if old_value == 1 and value ==0:
-                return True
-            return False
-
-        status = SubscriptionStatus(self.acquire, run=False, callback=is_done)
-
-        self.acquire.put(1)
-        return status
-    
-    def trigger(self):
-        #self.grab_frame().wait()
-        # return self.grab_frame()
-        # return (yield from self.grab_frame2())
-        return self.grab_frame()
-
-
-
-Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
-
-
-def save_Cam1_tiff(is_plot=True, is_save=True):
-    new_shape = (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(), Cam1.ArraySize0.get())
-    data = np.reshape(Cam1.ArrayData.get(), new_shape)
-    
-    if is_plot:
-        plt.figure()
-        plt.imshow(data.mean(axis=2, dtype=np.float32))
-    
-    if is_save:
-        fn_path = '/home/xf28id1/Documents/raw/cam1'
-        fn_name = auto_name_file('', '.tiff', fn_path)
-        skimage.io.imsave(fn_name, data.mean(axis=2, dtype=np.float32))
-
-
-
-class PDFCam1(AreaDetector):
-    image = Cpt(ImagePlugin, 'image1:')
-    _default_configuration_attrs = (
-        AreaDetector._default_configuration_attrs +
-        ('images_per_set', 'number_of_sets'))
-
-    tiff = Cpt(XPDTIFFPlugin, 'TIFF1:', #- MA
-             #write_path_template='Z:/data/pe1_data/%Y/%m/%d', #- DO
-             #write_path_template='J:\\%Y\\%m\\%d\\', #- DO
-             #write_path_template='Z:/img/%Y/%m/%d/', #- MA
-             write_path_template='/home/xf28id1/Documents/raw/cam1/temp/', 
-             #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
-             #read_path_template='/nsls2/data/pdf/legacy/raw/cam1/%Y/%m/%d/', #- DO
-             read_path_template='/home/xf28id1/Documents/raw/cam1/temp/', 
-             #root='/nsls2/data/pdf/legacy/raw/cam1/', #-DO
-             #root='/SHARE/img/', #-MA
-             root='/home/xf28id1/Documents/raw/cam1/temp/', 
-             cam_name='cam',  # used to configure "tiff squashing" #-MA
-             proc_name='proc',  # ditto #-MA
-             read_attrs=[]) #- MA  
-    # hdf5 = C(XPDHDF5Plugin, 'HDF1:',
-    #          write_path_template='G:/pe1_data/%Y/%m/%d/',
-    #          read_path_template='/direct/XF28ID2/pe1_data/%Y/%m/%d/',
-    #          root='/direct/XF28ID2/', reg=db.reg)
-
-    proc = Cpt(ProcessPlugin, 'Proc1:')
-
-    # These attributes together replace `num_images`. They control
-    # summing images before they are stored by the detector (a.k.a. "tiff
-    # squashing").
-    detector_type = Cpt(Signal, value='Perkin', kind='config')
-    images_per_set = Cpt(Signal, value=1, add_prefix=())
-    number_of_sets = Cpt(Signal, value=1, add_prefix=())
-
-    stats1 = Cpt(StatsPluginV33, 'Stats1:')
-    stats2 = Cpt(StatsPluginV33, 'Stats2:')
-    stats3 = Cpt(StatsPluginV33, 'Stats3:')
-    stats4 = Cpt(StatsPluginV33, 'Stats4:')
-    stats5 = Cpt(StatsPluginV33, 'Stats5:')
-
-    roi1 = Cpt(ROIPlugin, 'ROI1:')
-    roi2 = Cpt(ROIPlugin, 'ROI2:')
-    roi3 = Cpt(ROIPlugin, 'ROI3:')
-    roi4 = Cpt(ROIPlugin, 'ROI4:')
-
-    # dark_image = C(SavedImageSignal, None)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.stage_sigs.update([(self.cam.trigger_mode, 'Internal'),
-                               ])
-
-
-
-class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
-    pass
-
-
-Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
-            plugin_name='tiff')
-
-
-from ophyd.areadetector.trigger_mixins import SingleTrigger
-from ophyd.areadetector.detectors import PvcamDetector, AreaDetector
-
-class MyDetector(SingleTrigger, Cam):
-    pass
-
-prefix = 'XF:28ID1-BI{Cam:1}'
-CamS = MyDetector(prefix, name='CamS')
-
-
-def cam_BS_scan(det, md=None):
-    # det = Cam1
-    _md = {}
-    _md.update(md or {})
-    
-    @bpp.stage_decorator([det])
-    @bpp.run_decorator(md=_md)
-    def trigger_detector():  # TODO: rename appropriately
-        ret = {}
-        yield from bps.trigger(det, wait=True)
-        yield from bps.create(name="Cam1_RE")
-        reading = (yield from bps.read(det))
-        # print(f"reading = {reading}")
-        ret.update(reading)
-        yield from bps.save()
-    yield from trigger_detector()
+#     def trigger_detector():  # TODO: rename appropriately
+#         ret = {}
+#         yield from bps.trigger(det, wait=True)
+#         yield from bps.create(name="Cam1_RE")
+#         reading = (yield from bps.read(det))
+#         # print(f"reading = {reading}")
+#         ret.update(reading)
+#         yield from bps.save()
+#     yield from trigger_detector()
 
 
 
