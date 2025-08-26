@@ -88,3 +88,6 @@ history.sqlite
 Link\ to\ startup
 
 .vscode/
+# pixi environments
+.pixi/*
+!.pixi/config.toml
