@@ -200,14 +200,90 @@ def pila_3pos(dets, exposure, extra_md={}):
 
 
 
+## revised from pila_3pos (pdf_RE4) for putting into jog
+def pila_jog(dets, exposure, extra_md={}):
+    
+    # setting up area_detector
+    for ad in (d for d in dets if hasattr(d, "cam")):
+        (num_frame, acq_time, computed_exposure) = yield from configure_area_det2(
+            ad, exposure
+        )
+    
+    _md = ChainMap(
+        {
+            "sp_time_per_frame": acq_time,
+            "sp_num_frames": num_frame,
+            "sp_requested_exposure": exposure,
+            "sp_computed_exposure": computed_exposure,
+            "sp_type": "bps.trigger",
+            "sp_uid": str(uuid.uuid4()),
+            "sp_plan_name": "pila_jog",
+            "sp_detector": dets[0].name, 
+            "detectors": [area_det.name for area_det in dets],
+            # "data_keys": "pe1c_image", 
+        },
+    )
+    _md.update(extra_md)
+
+
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in extra_md.keys():
+        det_x_pos = extra_md['det_x_pos']
+
+    if 'det_y_pos' in extra_md.keys():
+        det_y_pos = extra_md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+
+    ## since jog already has the below 2 decorators so skipped here by CHL on 2025/08/25
+    # @bpp.stage_decorator([area_det]+motors)
+    # @bpp.run_decorator(md=_md)
+    def pdf_RE_inner(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos):
+        
+        def trigger_det(stream_name):
+            # ret = {}
+            # yield from bps.trigger(area_det, wait=True)
+            # yield from bps.create(name=stream_name)
+            # reading = (yield from bps.read(area_det))
+            # # print(f"reading = {reading}")
+            # ret.update(reading)
+            # yield from bps.save()
+            yield from trigger_and_read(dets, name=stream_name)
+
+        if dets[0].name == 'pe1c':
+            yield from periodic_dark(trigger_det(f"PDF_{dets[0].name}"))
+                
+        elif dets[0].name == 'pilatus1':
+            # if det_x_pos==None and det_y_pos==None:
+            #     det_x_pos = [40.644, 31.356, 36]
+            #     det_y_pos = [-3.356, -12.644, -8]
+            # else:
+            #     pass
+            
+            for i in range(len(det_x_pos)):
+                # Grid_X.move(det_x[i])
+                # Grid_Y.move(det_y[i])
+                # yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from periodic_dark(trigger_det(f"PDF_{dets[0].name}_{i}"))
+                    
+                
+    yield from pdf_RE_inner(dets)
+
+
+
+
 ## Revise jog for pilatus 3-position scan
-def rocking_ct_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
+def rocking_pila_3pos(dets, exposure, motor, start, stop, *, num=1, md=None):
     """Take a count while "rocking" the y-position"""
     _md = md or {}
     sp_md = yield from _xpd_pre_plan(dets, exposure)
     _md.update(sp_md)
-    _md["plan_name"] = "jo_pila_3pos"
+    _md["plan_name"] = "jog_pila_3pos"
     _md["jog_md"] = {"start": start, "stop": stop, "motor": motor.name}
+    _md["sp"]["sp_type"] = 'trigger_and_read' 
 
     @bpp.reset_positions_decorator([motor.velocity])
     def per_shot(dets):
@@ -217,7 +293,7 @@ def rocking_ct_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
         gp = short_uid("rocker")
         yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
         # yield from bps.trigger_and_read(dets)  # collect off detector
-        yield from pila_3pos(dets, exposure)
+        yield from pila_jog(dets, exposure)
         yield from bps.wait(group=gp)
         start, stop = stop, start
 
@@ -229,7 +305,7 @@ def rocking_ct_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
 def jog_pila(dets, exposure_s, motor, start, stop, md=None):
     """pass total exposure time (in seconds), motor name (i.e. Grid_Y), start and stop positions for the motor."""
     # yield from rocking_ct([pilatus], exposure_s, motor, start, stop)
-    yield from rocking_ct_pila(dets, exposure_s, motor, start, stop, md=md)
+    yield from rocking_pila_3pos(dets, exposure_s, motor, start, stop, md=md)
 
 
 
