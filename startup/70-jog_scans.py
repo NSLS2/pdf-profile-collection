@@ -173,8 +173,8 @@ def repeat_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
 def _pila_pre_plan(dets, exposure):
     """Handle detector exposure time + xpdan required metadata"""
 
-    if 'pilatus1' not in dets[0].name:
-        raise ValueError('This plan is for pilatus but not pilatus in dets')
+    # if 'pilatus1' not in dets[0].name:
+    #     raise ValueError('This plan is for pilatus but not pilatus in dets')
 
     # setting up area_detector
     for ad in (d for d in dets if hasattr(d, "cam")):
@@ -191,9 +191,9 @@ def _pila_pre_plan(dets, exposure):
         "num_frames": num_frame,
         "requested_exposure": exposure,
         "computed_exposure": computed_exposure,
-        "type": "trigger_and_read",
+        "type": "generator",
         "uid": str(uuid.uuid4()),
-        "plan_name": "jog_pila_3pos",
+        "plan_name": "bps.trigger",
     }
 
     _md = ChainMap(
@@ -204,7 +204,7 @@ def _pila_pre_plan(dets, exposure):
             "sp_computed_exposure": computed_exposure,
             "sp_type": "bps.trigger",
             "sp_uid": str(uuid.uuid4()),
-            "sp_plan_name": "pila_jog",
+            "sp_plan_name": "pilatus_3pos",
             "sp_detector": dets[0].name, 
             "detectors": [area_det.name for area_det in dets],
             # "data_keys": "pe1c_image", 
@@ -212,15 +212,48 @@ def _pila_pre_plan(dets, exposure):
     )
 
     # update md
-    _md.update({"sp": sp, **{f"sp_{k}": v for k, v in sp.items()}})
+    # _md.update({"sp": sp, **{f"sp_{k}": v for k, v in sp.items()}})
+    _md.update({"sp": sp, })
 
     return _md
 
 
 
+Grid_X_hinted = EpicsMotor('XF:28ID1B-ES{Env:1-Ax:X}Mtr', name='Grid_X', labels=['positioners'], kind='hinted')
+Grid_Y_hinted = EpicsMotor('XF:28ID1B-ES{Env:1-Ax:Y}Mtr', name='Grid_Y', labels=['positioners'], kind='hinted')
+# Grid_Z_hinted = EpicsMotor('XF:28ID1B-ES{Env:1-Ax:Z}Mtr', name='Grid_Z', labels=['positioners'], kind='hinted')
+
+OT_stage_2_X_hinted = EpicsMotor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X', labels=['positioners'], kind='hinted')
 
 ## revised from pila_3pos (pdf_RE4) for putting into jog
-def pre_pila_3pos(dets, exposure, extra_md={}):
+def _pila_single(dets, n, exposure, md=None, motors = [Grid_X, Grid_Y, Grid_Z]):
+    _md = md or {}
+    sp_md = yield from _pila_pre_plan(dets, exposure)
+    _md.update(sp_md)
+    stream_name = f"{dets[0].name}_pos{n}"
+    pos_dict = {stream_name:{}}
+    pos_dict[stream_name]['Grid_X'] = Grid_X.read()
+    pos_dict[stream_name]['Grid_Y'] = Grid_Y.read()
+    pos_dict[stream_name]['Grid_Z'] = Grid_Z.read()
+    _md.update(pos_dict)
+    
+    @bpp.stage_decorator(dets+motors)
+    @bpp.run_decorator(md=_md)
+    def trigger_and_wait():
+        for det in dets:
+            ret = {}
+            yield from bps.trigger(det, wait=True)
+            yield from bps.create(name=stream_name)
+            reading = (yield from bps.read(det))
+            # print(f"reading = {reading}")
+            ret.update(reading)
+            yield from bps.save()
+
+    yield from trigger_and_wait()
+
+
+
+def pre_pila_3pos(dets, extra_md={}):
 
     #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
     det_x_pos = [20.644, 11.356, 16]
@@ -235,12 +268,30 @@ def pre_pila_3pos(dets, exposure, extra_md={}):
     ## since jog already has the below 2 decorators so skipped here by CHL on 2025/08/25
     # @bpp.stage_decorator([area_det]+motors)
     # @bpp.run_decorator(md=_md)
-    def inner_scan(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos):            
+    def inner_scan(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos):
+
+        def trigger_and_wait(stream_name, wait=True):
+            for det in dets:
+                ret = {}
+                yield from bps.trigger(det, wait=wait)
+                yield from bps.create(name=stream_name)
+                # reading = (yield from bps.read(det))
+                # # print(f"reading = {reading}")
+                # ret.update(reading)
+                yield from bps.read(det)
+                yield from bps.read(Grid_X)
+                yield from bps.read(Grid_Y)
+                yield from bps.save()
+        
         for i in range(len(det_x_pos)):
-            # yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
-            yield from periodic_dark(trigger_and_read(dets, name=f"PDF_{dets[0].name}_{i}"))
-                    
-                
+            # yield from bps.mv(Grid_X_hinted, det_x_pos[i], Grid_Y_hinted, det_y_pos[i])
+            
+            ## The below two lines are just for test and need to be commented afterwards by CHLin 2025/08/29
+            print(f'num of pila_img{i = }')
+            yield from bps.mvr(OT_stage_2_X_hinted, 1, wait=True)
+            
+            yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}", wait=True))
+            
     yield from inner_scan(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos)
 
 
@@ -263,7 +314,7 @@ def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
         gp = short_uid("rocker")
         yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
         # yield from bps.trigger_and_read(dets)  # collect off detector
-        yield from pre_pila_3pos(dets, exposure)
+        yield from pre_pila_3pos(dets, )
         yield from bps.wait(group=gp)
         start, stop = stop, start
 
@@ -279,3 +330,28 @@ def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
 
 
 
+'''
+t0 = time.time()
+xrun({}, jog_pila([pilatus1], 20, OT_stage_2_Y, 20, 25, ), dark_strategy=no_dark)
+t1 = time.time()
+'''
+
+def test_plan(dets, exposure, stream_name, md=None):
+    _md = md or {}
+    sp_md = yield from _pila_pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "test_plan",
+    _md.update(sp_md)
+
+    @bpp.run_decorator(md=_md)
+    def trigger_and_wait():
+        for det in dets:
+            ret = {}
+            yield from bps.trigger(det, wait=True)
+            yield from bps.create(name=stream_name)
+            reading = (yield from bps.read(det))
+            # yield from bps.read(Grid_X)
+            # print(f"reading = {reading}")
+            ret.update(reading)
+            yield from bps.save()
+
+    yield from trigger_and_wait()
