@@ -1,5 +1,4 @@
 from ophyd.signal import DerivedSignal
-#import inflection, textwrap, ansiwrap
 
 class AtSetpoint(DerivedSignal):
     '''A signal that does bit-wise arithmetic on the Linkam's status code'''
@@ -145,7 +144,6 @@ def boxedtext(title, text, tint, width=75):
     print(colored(''.join([ul, bar*3, ' ', title, ' ', bar*remainder, ur]), tint))
     for line in text.split('\n'):
         lne = line.rstrip()
-        #add = ' '*(width-ansiwrap.ansilen(lne))
         add = ' '*(width-5)
         print(' '.join([colored(strut, tint), lne, add, colored(strut, tint)]))
     print(colored(''.join([ll, bar*(width+3), lr]), tint))
