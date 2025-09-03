@@ -16,7 +16,7 @@ nslsii = ">=0.11.2,<0.12"
 numpy = "*"
 ophyd = "*"
 pyepics = "*"
-python = "<3.13"
+python = ">=3.12,<3.13"
 semver = ">=3.0.4,<4"
 tiled-client = ">=0.1.0b11,<0.2"
 
@@ -26,7 +26,6 @@ ply = ">=3.11,<4"
 # needed until we get ophyd-async packaged
 colorlog = ">=6.9.0,<7"
 epicscorelibs = "*"
-pydantic-numpy = ">=8.0.1,<9"
 bluesky-darkframes = ">=0.6.0,<0.7"
 xpdacq = ">=1.1.4,<2"
 xpdan = ">=0.8.2,<0.9"
@@ -35,6 +34,9 @@ databroker = ">=2.0.0b67"
 bluesky-tiled-plugins = ">=2.0.0b67"
 tifffile = ">=2025.5.10,<2026"
 setuptools = "<81"
+hdf5-external-filter-plugins = ">=0.1.0,<0.2"
+blosc-hdf5-plugin = ">=1.0.1,<2"
+pydantic-numpy = ">=8.0.0,<9"
 
 
 [feature.profile.pypi-dependencies]
