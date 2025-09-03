@@ -19,11 +19,11 @@ SPI_XRD = [4, 4, 4, 4, 4, 4]                  # Scan Plan indecies in bt.list() 
 #Sample_X = [-122.85, -135.  , -146.9 , -158.98, -170.98, -183.04][::-1] # Pre-defined samples positions 
 Sample_X = [ -48.13,  -60.04,  -72.16,  -84.16,  -96.3 , -108.2]  #[::-1]
 Sample_Y = [45.0, 45.0, 45.0, 45.0, 45.0, 45.0]
-FMT = [3, 3, 3, 3, 3, 3]                # Frame acq_times of the samples
+FMT = [3, 3, 3, 3, 3, 3]                # Frame acq_times (detector exposure time) of the samples
 Measurement_Option = [0, 0, 0, 0, 0, 0]       # 0 Both PDF and XRD, 1- PDF only, 2 - XRD Only
-PDF_Number = [1, 1, 1, 1, 1, 1]              # total number of images Number of time PDF measurement is repeated at every temperature
+PDF_Number = [1, 1, 1, 1, 1, 1]              # total number of images, Number of time PDF measurement will be repeated at every temperature
 XRD_Number = [1, 1, 1, 1, 1, 1]              # Number of time PDF measurement is repeated at every temperature
-DARK_W = [1, 1, 1, 1, 1, 1]    #Unit second
+DARK_W = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]    #Unit:minute 
 
 Tlist_1 = [300] + list(range(400,90,-5)) + [300]      # Measurement Temperatures for SP[1]   #large temperatrue step : need give more time 
 Tlist_2 = [300] + list(range(400,90,-5)) + [300]      # Measurement Temperatures for SP[2]
@@ -37,7 +37,7 @@ TLIST = [Tlist_1, Tlist_2, Tlist_3, Tlist_4, Tlist_5, Tlist_6]
 
 st = 60      # sleep time for T stabiliy   ########large temperatrue step : need give more time 50K step may give more 120 -180 seco at leat#####
 st2 = 30     # sleep time before XRD measuement
-st3 = 0     # sleep after changing detector FMT
+st3 = 0     # sleep after changing detector FMT (detector exposure time)
 
 D1 = 2956   # PDF detector position
 D2 = 3956   # XRD detector position

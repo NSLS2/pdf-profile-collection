@@ -71,17 +71,34 @@ def one_rack_jog(smplist, posxlist, posylist, exp_time, jogstart, jogstop, num_i
 
     for num in range (num_imgs):
         for idx in range (len (posxlist)):
-            print('moving OT_stage_2_X', posxlist[idx])
-            print('moving OT_stage_2_Y', posylist[idx])
-            RE(mv(OT_stage_2_X, posxlist[idx]))
-            RE(mv(OT_stage_2_Y, posylist[idx]))
-            print(smplist[idx])
-            plan = jog([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
-            xrun(smplist[idx], plan, more_info = measurement_data())
-            print('sleep')
+            x = posxlist[idx]
+            
+            try:
+                y = posylist[idx]
+            except IndexError:
+                y = posylist[-1]
+            
+            sample_name = bt.samples.sel(smplist[idx])['sample_name']
+            print(f'\nmoving OT_stage_2_X, {x = }')
+            print(f'moving OT_stage_2_Y, {y = }')
+            print(f'{smplist[idx] = }, {sample_name = }\n')
+            RE(mv(OT_stage_2_X, x, OT_stage_2_Y, y))
+
+            if 'pilatus' in area_det.name:
+                plan = jog_pila([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
+                dark_strategy=no_dark
+            else:
+                plan = jog([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
+                dark_strategy=None
+
+            xrun(smplist[idx], plan, more_info = measurement_data(), dark_strategy=dark_strategy)
+
             glbl['frame_acq_time']=0.1
-            time.sleep(sleeptime_btw_smpl)    ### 90
+            tqdm_sleep(sleeptime_btw_smpl, message='Sleep between Samples')
             glbl['frame_acq_time']=det_exp_for_sleep   ######## 0.5        
+
+
+
 
 def one_rack_jog_rel(smplist, posxlist, posylist, exp_time, jog_dist, num_imgs, sleeptime_btw_smpl, det_exp_for_sleep):
     '''
@@ -98,19 +115,35 @@ def one_rack_jog_rel(smplist, posxlist, posylist, exp_time, jog_dist, num_imgs, 
 
     for num in range (num_imgs):
         for idx in range (len (posxlist)):
-            print('moving OT_stage_2_X', posxlist[idx])
-            print('moving OT_stage_2_Y', posylist[idx])
-            RE(mv(OT_stage_2_X, posxlist[idx]))
-            RE(mv(OT_stage_2_Y, posylist[idx]))
-            print(smplist[idx])
-            jogstart = posylist[idx]-jog_dist
-            jogstop = posylist[idx] +jog_dist
-            plan = jog([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
-            xrun(smplist[idx], plan, more_info = measurement_data())
-            print('sleep')
+            x = posxlist[idx]
+            
+            try:
+                y = posylist[idx]
+            except IndexError:
+                y = posylist[-1]
+            
+            sample_name = bt.samples.sel(smplist[idx])['sample_name']
+            print(f'\nmoving OT_stage_2_X, {x = }')
+            print(f'moving OT_stage_2_Y, {y = }')
+            print(f'{smplist[idx] = }, {sample_name = }\n')
+            RE(mv(OT_stage_2_X, x, OT_stage_2_Y, y))
+
+            jogstart = y-jog_dist
+            jogstop = y +jog_dist
+
+            if 'pilatus' in area_det.name:
+                plan = jog_pila([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
+                dark_strategy=no_dark
+            else:
+                plan = jog([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
+                dark_strategy=None
+
+            xrun(smplist[idx], plan, more_info = measurement_data(), dark_strategy=dark_strategy)
+
             glbl['frame_acq_time']=0.1
-            time.sleep(sleeptime_btw_smpl)    ### 90
-            glbl['frame_acq_time']=det_exp_for_sleep   ######## 0.5  
+            tqdm_sleep(sleeptime_btw_smpl, message='Sleep between Samples')
+            glbl['frame_acq_time']=det_exp_for_sleep   ######## 0.5   
+
 
 
 # #def one_rack(smplist, posxlist, posy, ScanPlan, num_imgs, det_exp, sleeptime_btw_smpl):

@@ -32,7 +32,7 @@ sample_posX_row3 = [-159.10235516, -150.17423435, -141.14102875, -132.08282702]
 
 posY = [-114.46, -50.06, 11.94]
 
-
+posY = [-114.46, -50.06, 11.94]
 sampleID_PDF_row1 = list(range(71, 47, -1))
 sampleID_PDF_row2 = list(range(72, 85, 1))
 sampleID_PDF_row3 = [88, 87, 86, 85]
@@ -41,15 +41,21 @@ sampleID_XRD_row1 = list(range(112, 88, -1))
 sampleID_XRD_row2 = list(range(113, 126, 1))
 sampleID_XRD_row3 = [129, 128, 127, 126]
 
-ScanPlans_PDF = 5   ######## 5
-ScanPlans_XRD = 5	######## 5
+
+#jog_plan = jog([area_det], exp_time, OT_stage_2_Y, jogstart, jogstop)
+ScanPlans_PDF = [5, 5, 5]  #[5, jog_plan, jog_plan]   ######## Not good for all of the racks
+ScanPlans_XRD = [5, 0, 0]	######## 5
 
 # Number of images
 num_repeat = 6
 
-#wait time
-wait_time_PDF = 60 #300	########
-wait_time_XRD = 60 #300	########
+#Time to clear detector
+wait_time_PDF = 60 #sec, time to clear detector after PDF measurement 
+wait_time_XRD = 60 #sec, time to clear detector after XRD measurement 
+
+#wait time for detector signal
+wait_det_signal_PDF = 5 #sec
+wait_det_signal_XRD = 5 #sec
 
 #Det_position
 Det_PDF = 3022.5 #2810
@@ -67,21 +73,22 @@ sample_XRD_ID = [sampleID_XRD_row1, sampleID_XRD_row2, sampleID_XRD_row3]
 for num in range(num_repeat):
 
 	move_PDF(Det_PDF)
-	for i in range(len(posY)):
-		for j in range(len(sample_PDF_ID[i])):
+	for i in range(len(posY)):		#select rack in y-position
+		for j in range(len(sample_PDF_ID[i])):		#scan x-position in the selected y-position (posY)
 			print('\nmoving OT_stage_2_X', sample_posX[i][j])
 			print('moving OT_stage_2_Y', posY[i])
 			print('Sample ID', sample_PDF_ID[i][j], '\n')
 			RE(mv(OT_stage_2_X, sample_posX[i][j], OT_stage_2_Y, posY[i]))
 			# print([idx])
 
-			xrun(sample_PDF_ID[i][j], ScanPlans_PDF)
+			xrun(sample_PDF_ID[i][j], ScanPlans_PDF[i])
 			print('sleep')
 			glbl['frame_acq_time']=0.1
-			time.sleep(wait_time_PDF)    ### 20
+			tqdm_sleep(wait_time_PDF, message='Clear detector after PDF')
 			glbl['frame_acq_time']=frame_acq_time   ######## 0.2
+			tqdm_sleep(wait_det_signal_PDF, message='wait time for detector signal')
 
-
+	
 	move_XRD(Det_XRD)
 	for i in range(len(posY)):
 		for j in range(len(sample_XRD_ID[i])):
@@ -91,11 +98,12 @@ for num in range(num_repeat):
 			RE(mv(OT_stage_2_X, sample_posX[i][j], OT_stage_2_Y, posY[i]))
 			# print([idx])
 
-			xrun(sample_XRD_ID[i][j], ScanPlans_XRD)
+			xrun(sample_XRD_ID[i][j], ScanPlans_XRD[i])
 			print('sleep')
 			glbl['frame_acq_time']=0.1
-			time.sleep(wait_time_XRD)    ### 20
+			tqdm_sleep(wait_time_XRD, message='Clear detector after XRD')
 			glbl['frame_acq_time']=frame_acq_time   ######## 0.2
+			tqdm_sleep(wait_det_signal_XRD, message='wait time for detector signal')
 
 
 

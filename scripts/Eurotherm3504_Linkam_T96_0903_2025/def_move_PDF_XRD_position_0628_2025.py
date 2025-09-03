@@ -23,19 +23,19 @@ B = [300, 400, 500]
 #A = [30, 35, 30]
 #C=list(range(955,500,-5))
 #D=list(range(500,50,-10))  
-T_threshold = 1	     	     # T-setpoint +-threshold
-Settle_time = 300	             # Settle time (sec) after Linkam reach the setpoint	Temperature
-
+T_threshold = 1		# T-setpoint +-threshold (***do not touch***)
+Settle_time = 300		# For Eurotherm controller, Settle time (sec) will be longer. may give more than 60sec. 
+					    # For Linkam_T96, settle time (sec) will be short. don't wait for too long, 30sec is enough	
 # Tlist= A+B
 Tlist = B
 
-smpi = 0 #59             # sample index
-spi = 0  #4 #5                 # scan plan index
+smpi = 0 #59		# sample index
+spi = 0  #4 #5		# scan plan index
 
 Option_1 = 1            # 0 for both XRD & PDF, 1 for only PDF, and 2 for only XRD measuremnts
-num_repaet_PDF = 5
-num_repaet_XRD = 1
-rest_repeat = 2 #60      # Rest time during each repeat to clear the detector
+num_repaet_PDF = 5		# number of images at each temperature will be taken
+num_repaet_XRD = 1		# number of images at each temperature will be taken
+sleep_clear = 2	# unit=sec, Rest time during each repeat to clear the detector
 
 Det_PDF = 4086 #3070               # PDF detector position
 Det_XRD = 4086 #3770               # XRD detector position
@@ -43,14 +43,14 @@ Det_XRD = 4086 #3770               # XRD detector position
 D1 = Det_PDF
 D2 = Det_XRD
 
-det_exp_PDF = 0.2	# for option 0
-det_exp_XRD = 0.2	# for option 0
+det_exp_PDF = 0.2	# for all options (PDF/XRD, PDF, XRD)
+det_exp_XRD = 0.2	# for all options (PDF/XRD, PDF, XRD)
 
 glbl['frame_acq_time'] = 0.1	#Deatector frame acquasition time
 glbl['dk_window'] = 0.1         # dark current acquasition window
 st2 = 5 #30                 	# sleep time after first PDF and XRD measuement at option 0(zero)
 
-thermal_device = eurotherm3504  #linkam_T96
+thermal_device = eurotherm3504  #select "linkam_T96" or "eurotherm3504"
 
 plt.figure()
 #======================================= Definition of Measuremet =======================================
@@ -72,7 +72,7 @@ def tqdm_sleep(rest_time, message='Sleep'):
         time.sleep(rest_time/100)
 
 
-def measurement(num_repeat, rest_time=1, frame_time=0.1, Settle_time=10):
+def measurement(num_repeat, sleep_clear=1, frame_time=0.1, Settle_time=10):
 	DetZ.append(round(Det_1_Z.position))
 	
 	try:
@@ -92,7 +92,7 @@ def measurement(num_repeat, rest_time=1, frame_time=0.1, Settle_time=10):
 	for i in range(num_repeat):
 		xrun(smpi,spi,useful_info = measurement_data())
 		glbl['frame_acq_time'] = 0.1
-		tqdm_sleep(rest_time, message='Clear detector')
+		tqdm_sleep(sleep_clear, message='Clear detector')
 		glbl['frame_acq_time'] = frame_time
 
 
@@ -128,13 +128,13 @@ if Option_1 == 0:   # PDF and XRD
 		thermal_device.move(Tlist[i])    
 		#Det_1_Z.move(D1)
 		move_PDF()
-		measurement(num_repaet_PDF, rest_time=rest_repeat, frame_time=det_exp_PDF, Settle_time=Settle_time)
+		measurement(num_repaet_PDF, rest_time=sleep_clear, frame_time=det_exp_PDF, Settle_time=Settle_time)
 		glbl['frame_acq_time'] = 0.1
 		tqdm_sleep(st2, message='Sleep after PDF')
 		glbl['frame_acq_time'] = det_exp_XRD
 		#Det_1_Z.move(D2)
 		move_XRD()
-		measurement(num_repaet_XRD, rest_time=rest_repeat, frame_time=det_exp_XRD, Settle_time=Settle_time)
+		measurement(num_repaet_XRD, rest_time=sleep_clear, frame_time=det_exp_XRD, Settle_time=Settle_time)
 		tqdm_sleep(st2, message='Sleep after XRD')
     
 if Option_1 == 1:   #PDF 
@@ -144,7 +144,7 @@ if Option_1 == 1:   #PDF
 	for i in range(len(Tlist)):
 		print(f'\nmove {thermal_device.name} to {Tlist[i]}\n')
 		thermal_device.move(Tlist[i])
-		measurement(num_repaet_PDF, rest_time=rest_repeat, frame_time=det_exp_PDF, Settle_time=Settle_time)
+		measurement(num_repaet_PDF, rest_time=sleep_clear, frame_time=det_exp_PDF, Settle_time=Settle_time)
 		tqdm_sleep(st2, message='Sleep after PDF')
 
 if Option_1 == 2:   #XRD
@@ -154,7 +154,7 @@ if Option_1 == 2:   #XRD
 	for i in range(len(Tlist)):
 		print(f'\nmove {thermal_device.name} to {Tlist[i]}\n')
 		thermal_device.move(Tlist[i])
-		measurement(num_repaet_XRD, rest_time=rest_repeat, frame_time=det_exp_XRD, Settle_time=Settle_time)
+		measurement(num_repaet_XRD, rest_time=sleep_clear, frame_time=det_exp_XRD, Settle_time=Settle_time)
 		tqdm_sleep(st2, message='Sleep after XRD')
 
 
