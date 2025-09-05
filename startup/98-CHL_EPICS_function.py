@@ -86,6 +86,14 @@ def measurement_data(): # .......Captures metadata
     info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
     info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
     info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
+
+    info_dict['hotairblower'] = hotairblower.read()['hotairblower']['value']
+    info_dict['linkam_T96'] = linkam_T96.readback.get()
+    info_dict['cryostream_T'] = cryostream.read()['cryostream_T']['value']
+    info_dict['eurotherm3504'] = eurotherm3504.read()['eurotherm3504']['value']
+
+
+
     info_dict['Measurement_time'] = time.time()
     
     return info_dict

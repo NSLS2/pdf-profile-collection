@@ -236,8 +236,12 @@ class img_integrate(imgData_2D.imgData_2D):
                'percentile_low_limit': self.ll, 
                'percentile_up_limit': self.ul, 
                self.T_controller: self.temperature, 
-               }
+        }
         md.update(_md)
+
+        if type(self.temperature) is float:
+            md.update({'temperature': f'{self.temperature:.2f} K'})
+
 
         if 'pilatus' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.iq')
