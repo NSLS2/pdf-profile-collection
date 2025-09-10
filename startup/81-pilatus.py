@@ -41,6 +41,16 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
             ret[key].setdefault("dtype_str", type_map[cam_dtype])
 
         return ret
+    
+    def update_paths(self):
+        base_path = f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/pass-{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
+        self.write_path_template = base_path
+        self.read_path_template = base_path
+
+    def stage(self):
+        self.update_paths()
+        super().stage()
+
 
 class PilatusDetectorCamV33(PilatusDetectorCam):
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
@@ -75,7 +85,7 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
 
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/data/pdf/legacy/raw/pilatus1_data/%Y/%m/%d/',
+               write_path_template='',
                root='/nsls2/data/pdf/legacy/raw')
     
     def set_exposure_time(self, exposure_time, verbosity=3):
@@ -88,10 +98,10 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         # self.cam.num_images = num_images
 
 
-pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus1')
+pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
 # pilatus1.tiff.read_attrs = []
 pilatus1.tiff.kind = 'normal'
-
+pilatus1.tiff.update_paths()
 
 
 

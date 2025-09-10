@@ -56,6 +56,7 @@ if xpdacq_version < (1, 1, 0):
 
     # instantiate xrun without beamtime, like bluesky setup
     xrun = CustomizedRunEngine(None)
+    xrun.md = RE.md
     xrun.md['beamline_id'] = glbl['beamline_id']
     xrun.md['group'] = glbl['group']
     xrun.md['facility'] = glbl['facility']
