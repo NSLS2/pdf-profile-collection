@@ -229,3 +229,5 @@ def print_all_pv_values():
 
         for key, val in ret.items():
             print("{:40s} \t {:20s} \t {}".format(key, time.ctime(val['timestamp']), val['value']))
+
+db = tiled_inserter

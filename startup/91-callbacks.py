@@ -374,15 +374,15 @@ data_info_keys_bgsub=[
     #('event', 'data', ''),
 ]
 
-soft_link_callback = SoftLinkCallBack(db, data_keys, data_info_keys_softlink, root='/SHARE/user_data')
+# soft_link_callback = SoftLinkCallBack(db, data_keys, data_info_keys_softlink, root='/SHARE/user_data')
 
-RE.subscribe(soft_link_callback)
+# RE.subscribe(soft_link_callback)
 # background subtraction callback
-bgsub_callback =  DarkSubtractionCallback([soft_link_callback],
-                                          image_key = "pe1_image",
-                                          primary_stream="primary",
-                                          dark_stream="dark", db=db,
-                                          data_info_keys=data_info_keys_bgsub)
-
-RE.subscribe(bgsub_callback)
+# bgsub_callback =  DarkSubtractionCallback([soft_link_callback],
+                                        #   image_key = "pe1_image",
+                                        #   primary_stream="primary",
+                                        #   dark_stream="dark", db=db,
+                                        #   data_info_keys=data_info_keys_bgsub)
+# 
+# RE.subscribe(bgsub_callback)
 

@@ -52,8 +52,8 @@ eurotherm = Eurotherm('XF:28ID1-ES:1{Env:04}T-I', write_pv='XF:28ID1-ES:1{Env:04
 #eurotherm3504 = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:SP', name='eurotherm3504')
 #eurotherm3504_ramprate = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RR', name='eurotherm3504_ramprate')
 #eurotherm3504_temp = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RBV', name='eurotherm3504_temp')
-eurotherm3504 = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:PV:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:SP', name='eurotherm3504')
-eurotherm3504_ramprate = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RR:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:RR', name='eurotherm3504')
+# eurotherm3504 = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:PV:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:SP', name='eurotherm3504')
+# eurotherm3504_ramprate = Eurotherm('XF:28ID1-ES{ET:05}LOOP1:RR:RBV', write_pv = 'XF:28ID1-ES{ET:05}LOOP1:RR', name='eurotherm3504')
 
 class CryoStream(Device):
     # readback

@@ -43,7 +43,7 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
         return ret
     
     def update_paths(self):
-        base_path = f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/pass-{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
+        base_path = f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
         self.write_path_template = base_path
         self.read_path_template = base_path
 

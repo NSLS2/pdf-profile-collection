@@ -144,8 +144,10 @@ class XPDTIFFPlugin(TIFFPlugin, XPDFileStoreTIFFSquashing,
                     FileStoreIterativeWrite):
 
     def update_paths(self):
-        self.write_path_template = f"J:\\proposals\\{RE.md['cycle']}\\pass-{RE.md['data_session']}\\assets\\{self.parent.name}\\%Y\\%m\\%d"
-        self.read_path_template = f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/pass-{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
+        directory_path_leaf = f"proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d/"
+        win_dir = directory_path_leaf.replace("/", "\\")
+        self.write_path_template = f"J:\\{win_dir}"
+        self.read_path_template = f"/nsls2/data/pdf/{directory_path_leaf}"
 
     def stage(self):
         self.update_paths()
@@ -164,11 +166,11 @@ class XPDPerkinElmer(PerkinElmerDetector):
 
     tiff = C(XPDTIFFPlugin, 'TIFF1:', #- MA
              #write_path_template='Z:/data/pe1_data/%Y/%m/%d', #- DO
-             write_path_template=f"J:\\proposals\\{RE.md['cycle']}\\pass-{RE.md['data_session']}\\assets\\{self.parent.name}\\%Y\\%m\\%d", #- DO
+             write_path_template=f"J:\\proposals\\{RE.md['cycle']}\\{RE.md['data_session']}\\assets\\%Y\\%m\\%d", #- DO
              #write_path_template='Z:/img/%Y/%m/%d/', #- MA
              #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
-             read_path_template=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/pass-{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
-             root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/pass-{RE.md['data_session']}/assets/{self.parent.name}"
+             read_path_template=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/%Y/%m/%d",
+             root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/",
              #root='/SHARE/img/', #-MA
              cam_name='cam',  # used to configure "tiff squashing" #-MA
              proc_name='proc',  # ditto #-MA
