@@ -571,10 +571,16 @@ def pbaar_set_temp(new_temp,
                        'input_channel':'temp.A', 
                        'output_channel':'out1',}, 
                    tolerance=0.5):
+    try:
+        out_obj = getattr(device_config['temp_controller'], device_config['output_channel'])
+        in_obj = getattr(device_config['temp_controller'], device_config['input_channel'])    
+        T_from_sensor = in_obj.T
     
-    out_obj = getattr(temp_controller, output_channel)
-    in_obj = getattr(temp_controller, input_channel)    
-    T_from_sensor = in_obj.T
+    except AttributeError:
+        out_obj = 
+    
+    
+    
     start_T = T_from_sensor.get()
 
     # def check_setpoint(new_value, old_value, **kwargs):
