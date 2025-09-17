@@ -76,9 +76,9 @@ def measurement(num_repeat, sleep_clear=1, frame_time=0.1, Settle_time=10):
 	DetZ.append(round(Det_1_Z.position))
 	
 	try:
-		tset = thermal_device.setpoint.get()  #for linkham get target temperature
+		tset = thermal_device.setpoint.get()  #for eurotherm/linkham get target temperature
 	except AttributeError:
-		tset = thermal_device.setpoint        #for eurotherm 
+		tset = thermal_device.setpoint        ## After revision on 2025/09/17, eurotherm and linkam use the same attribute to read temperature
 
 	tqdm_sleep(Settle_time, message='Wait for thermal equilibrium')
 
@@ -125,7 +125,8 @@ if Option_1 == 0:   # PDF and XRD
 		glbl['frame_acq_time'] = det_exp_PDF
 		# RE(mv(thermal_device,Tlist[i]))
 		print(f'\nmove {thermal_device.name} to {Tlist[i]}\n')
-		thermal_device.move(Tlist[i])    
+		# thermal_device.move(Tlist[i])
+		RE(pbar_set_temp(temp_controller = thermal_device, ramprate = 5, setpoint = Tlist[i], ))
 		#Det_1_Z.move(D1)
 		move_PDF()
 		measurement(num_repaet_PDF, rest_time=sleep_clear, frame_time=det_exp_PDF, Settle_time=Settle_time)
@@ -143,7 +144,8 @@ if Option_1 == 1:   #PDF
 	move_PDF()
 	for i in range(len(Tlist)):
 		print(f'\nmove {thermal_device.name} to {Tlist[i]}\n')
-		thermal_device.move(Tlist[i])
+		# thermal_device.move(Tlist[i])
+		RE(pbar_set_temp(temp_controller = thermal_device, ramprate = 5, setpoint = Tlist[i], ))
 		measurement(num_repaet_PDF, rest_time=sleep_clear, frame_time=det_exp_PDF, Settle_time=Settle_time)
 		tqdm_sleep(st2, message='Sleep after PDF')
 
@@ -153,7 +155,8 @@ if Option_1 == 2:   #XRD
 	move_XRD()
 	for i in range(len(Tlist)):
 		print(f'\nmove {thermal_device.name} to {Tlist[i]}\n')
-		thermal_device.move(Tlist[i])
+		# thermal_device.move(Tlist[i])
+		RE(pbar_set_temp(temp_controller = thermal_device, ramprate = 5, setpoint = Tlist[i], ))
 		measurement(num_repaet_XRD, rest_time=sleep_clear, frame_time=det_exp_XRD, Settle_time=Settle_time)
 		tqdm_sleep(st2, message='Sleep after XRD')
 

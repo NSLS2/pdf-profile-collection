@@ -566,7 +566,7 @@ def cryostat_set_temp(new_temp, new_range, input_channel='temp.A', output_channe
 
 def pbaar_set_temp(new_temp, 
                    device_config = {
-                       'temp_controller':lakeshore336, 
+                       'temp_controller':lakeshore336_2, 
                        'range':3, 
                        'input_channel':'temp.A', 
                        'output_channel':'out1',}, 
@@ -577,7 +577,7 @@ def pbaar_set_temp(new_temp,
         T_from_sensor = in_obj.T
     
     except AttributeError:
-        out_obj = 
+        out_obj = ''
     
     
     

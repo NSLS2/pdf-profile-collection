@@ -1,0 +1,82 @@
+import sys
+import logging
+from slack import WebClient
+from slack.errors import SlackApiError
+import os
+import time
+
+##load local source
+#sys.path.insert(1, "./python-slackclient")
+
+##enable logging
+#logging.basicConfig(level=logging.DEBUG)
+
+#client = WebClient()
+#api_response = client.api_test()
+
+##############
+slack_token = os.environ["SLACK_API_TOKEN"]
+client = WebClient(token=slack_token)
+
+def slack_message(my_message):
+    try:
+        response = client.chat_postMessage(
+            channel = "pdf_dev",
+            #channel = user_name,
+            text = my_message,
+            )
+    except SlackApiError as e:
+        assert e.response["something went wrong"]
+
+
+def check_heartbeat(fname='hbeat.txt', tlapse=300,send_warning=False,notify_user=False):
+    fin = open(fname,'r')
+    tread = float(fin.read())
+    tpassed = time.time() - tread
+    if tpassed > tlapse:
+        tpassed_str = str(tpassed/60)[:3]
+        if send_warning:
+            msg_to_send = "Issue detected, no pulse in "+tpassed_str+" mins"
+            if notify_user:
+                msg_to_send = "<@"+str(user_ID)+"> "+msg_to_send
+            slack_message(msg_to_send)
+        return False
+    return True
+
+
+def update_heartbeat(fname='hbeat.txt'):
+    fout = open(fname,'w')
+    fout.write(str(time.time()))
+    fout.close()
+
+
+#####
+wait_time = 10 #time in seconds between each check
+user_ID = 'ULP5FCDDH'
+notify_user = False
+
+if len(sys.argv) != 2:
+    print ('default monitoring - updates required within 5 minute window')
+    monitor_window_s = 300
+    monitor_window_mins = 5
+else:
+    monitor_window_mins = float(sys.argv[1])
+    print ("Monitoring heartbeat every "+str(monitor_window_mins)+" minutes")
+    monitor_window_s = monitor_window_mins * 60.0
+
+
+go_on = True
+while go_on:
+    go_on1 = check_heartbeat(tlapse=monitor_window_s)
+    time.sleep(wait_time)
+
+    if not go_on1: #wait 1 second, then try again
+        time.sleep(1)
+        go_on = check_heartbeat(tlapse=monitor_window_s,send_warning = True, notify_user=True)
+
+#slack_message("I have lost the heartbeat - last updated over "+str(monitor_window_mins)+" mins ago")
+
+print ("Ending monitoring process, lost heartbeat")
+
+
+
