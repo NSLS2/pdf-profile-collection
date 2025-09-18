@@ -191,10 +191,10 @@ def pila_3pos(dets, exposure, extra_md={}):
             yield from bps.read(Grid_Y)
             yield from bps.save()
 
-        if area_det.name == 'pe1c':
+        if 'pe1' in area_det.name:
             yield from periodic_dark(trigger_det(f"{area_det.name}_00"))
                 
-        elif area_det.name == 'pilatus1':
+        elif 'pilatus' in area_det.name:
             # if det_x_pos==None and det_y_pos==None:
             #     det_x_pos = [40.644, 31.356, 36]
             #     det_y_pos = [-3.356, -12.644, -8]
@@ -204,7 +204,7 @@ def pila_3pos(dets, exposure, extra_md={}):
             for i in range(len(det_x_pos)):
                 # Grid_X.move(det_x[i])
                 # Grid_Y.move(det_y[i])
-                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                # yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
                 yield from periodic_dark(trigger_det(f"{area_det.name}_pos{i}"))
                     
                 
@@ -383,7 +383,8 @@ def pre_pila_3pos(dets, extra_md={}):
             
             ## The below two lines are just for test and need to be commented afterwards by CHLin 2025/08/29
             print(f'num of pila_img{i = }')
-            yield from bps.mvr(OT_stage_2_X_hinted, 1, wait=True)
+            # yield from bps.mvr(OT_stage_2_X_hinted, 1, wait=True) ## for testing when not want to move pilatus
+            yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i], wait=True)
             
             yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}", wait=True))
             
@@ -472,7 +473,7 @@ from xpdacq.xpdacq import _inject_qualified_dark_frame_uid, _inject_calibration_
 def trigger_dk(dets, exposure, stream_name, sample_name='test', md=None):
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = test_trigger(dets, exposure, stream_name, sample_name=sample_name, md=None)
+    grand_plan = test_trigger(dets, exposure, stream_name, sample_name=sample_name, md=md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)

@@ -56,6 +56,7 @@ class img_plotter(open_figures):
         elif type(mask) is np.ndarray:
             mask_array = mask
         
+        # mask_array = np.float32(mask_array)
         masked_ = ma.masked_array(img, mask=mask_array)
         masked_img = masked_.filled(fill_value=np.nan)
 
@@ -94,6 +95,7 @@ class img_plotter(open_figures):
         elif type(mask) is np.ndarray:
             mask_array = mask
         
+        # mask_array = np.float32(mask_array)
         masked_ = ma.masked_array(img, mask=mask_array)
         masked_img = masked_.filled(fill_value=np.nan)
         

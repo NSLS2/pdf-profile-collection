@@ -49,13 +49,13 @@ lakeshore336 = Lakeshore336('XF:28ID1-ES{LS336:1' , name='lakeshore336')
 
 from ophyd.status import SubscriptionStatus, MoveStatus
 
-def temperature_pbar(start_T, stop_T, T_callable, status):
+def temperature_pbar(start_T, stop_T, T_callable, tolerance, status):
     from tqdm import tqdm
     with tqdm(total=100, desc=f'Target: {T_callable.get()}/{stop_T} K') as pbar:
         percent_T = 0
         while not status.success:
-            status.check_value(new_value=stop_T, old_value=T_callable.get())
-            percent_T = round(100*abs((T_callable.get()-start_T)/(stop_T-start_T)), 2) - percent_T
+            status.check_value(new_value=stop_T-tolerance, old_value=T_callable.get())
+            percent_T = round(100*abs((T_callable.get()-start_T)/(stop_T-tolerance-start_T)), 2) - percent_T
             pbar.set_description(f'Target: {T_callable.get()}/{stop_T} K')
             pbar.update(percent_T)
             time.sleep(2)
@@ -142,7 +142,7 @@ class Lakeshore336_2(Device):
         out_obj.set_setpoint(new_value, wait=False)
         status = SubscriptionStatus(T_from_sensor, run=True, callback=_check_setpoint)
 
-        status = temperature_pbar(start_T, out_obj.setpoint.get()-self.tolerance, T_from_sensor, status)
+        status = temperature_pbar(start_T, out_obj.setpoint.get(), T_from_sensor, self.tolerance, status)
 
         return status
 

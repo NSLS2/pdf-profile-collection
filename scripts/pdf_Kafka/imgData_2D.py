@@ -56,6 +56,11 @@ class imgData_2D(imgData_config):
     @property
     def detector(self):
         return self.run.start['detectors'][0]
+    
+
+    @property
+    def img_key(self):
+        return f'{self.detector}_image'
 
 
     @property
@@ -175,10 +180,10 @@ class imgData_2D(imgData_config):
         if 'pilatus' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
         else:
@@ -215,9 +220,9 @@ class imgData_2D(imgData_config):
         """ Assuming im2 offset by -osetx, -osety, and im3 offset by +osetx, +osety """
         
         # run = tiled_client[uid]
-        my_im3 = getattr(self.run, self.stream_name[0]).read()['pilatus1_image'].to_numpy()[0][0]
-        my_im2 = getattr(self.run, self.stream_name[1]).read()['pilatus1_image'].to_numpy()[0][0]
-        my_im1 = getattr(self.run, self.stream_name[2]).read()['pilatus1_image'].to_numpy()[0][0]
+        my_im3 = getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0]
+        my_im2 = getattr(self.run, self.stream_name[1]).read()[self.img_key].to_numpy()[0][0]
+        my_im1 = getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0]
 
         if self.use_flat_field_pila:
             flat_field = tifffile.imread(self.flat_field_pila)
@@ -270,14 +275,31 @@ class imgData_2D(imgData_config):
         return self.process_img
     
 
+
+    def sub_dk_img(self):
+
+        raw_img = getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0]
+
+        dk_uid = self.run.start['sc_dk_field_uid']
+        dk_run = self.tiled_client[dk_uid]
+        dk_img = getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0]
+
+        sub_img = np.float32(raw_img-dk_img)
+
+        return sub_img
+
+
     def save_img_perkin(self):
 
-        self.process_img = self.sandbox_tiled[self.dksub_uid].read()
+        # self.process_img = self.sandbox_tiled[self.dksub_uid].read()
         
+        ## After data security, data transfer of pdfstream is done by 0MQ not Kafka 
+        self.process_img = self.sub_dk_img()
+
         if self.use_flat_field_pe1c or self.use_flat_field_pe2c:
-            if 'pe1c' in self.detector:
+            if 'pe1' in self.detector:
                 flat_field = tifffile.imread(self.flat_field_pe1c)
-            elif 'pe2c' in self.detector:
+            elif 'pe2' in self.detector:
                 flat_field = tifffile.imread(self.flat_field_pe2c)
             else:
                 flat_field = tifffile.imread(self.flat_field_pe1c)
@@ -286,10 +308,10 @@ class imgData_2D(imgData_config):
 
         os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
         
-        if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+        if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
             tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
         
-        elif (self.use_flat_field_pe2c) and ('pe2c' in self.detector):
+        elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
             tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:

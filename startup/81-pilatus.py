@@ -82,11 +82,12 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
     #roi3 = Cpt(ROIPlugin, 'ROI3:')
     #roi4 = Cpt(ROIPlugin, 'ROI4:')
     #proc1 = Cpt(ProcessPlugin, 'Proc1:')
-
+    
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='',
-               root='/nsls2/data/pdf/legacy/raw')
+               root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets", )
+               ## CHL changed root on 2025/09/18 in order to be consistent with base path
     
     def set_exposure_time(self, exposure_time, verbosity=3):
         yield from bps.mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+.1)

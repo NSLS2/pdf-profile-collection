@@ -37,7 +37,7 @@ def cryostat_set_temp(temp_controller = lakeshore336_2,
     
     status = SubscriptionStatus(T_from_sensor, run=True, callback=_check_setpoint)
 
-    status = temperature_pbar(start_T, out_obj.setpoint.get()-tolerance, T_from_sensor, status)
+    status = temperature_pbar(start_T, out_obj.setpoint.get(), T_from_sensor, tolerance, status)
         
     return status
 
@@ -60,6 +60,6 @@ def pbar_set_temp(temp_controller = eurotherm3504, ramprate = 5, setpoint = 25, 
     
     status = SubscriptionStatus(T_from_sensor, run=True, callback=_check_setpoint)
 
-    status = temperature_pbar(start_T, temp_controller.setpoint.get()-tolerance, T_from_sensor, status)
+    status = temperature_pbar(start_T, temp_controller.setpoint.get(), T_from_sensor, tolerance, status)
         
     return status

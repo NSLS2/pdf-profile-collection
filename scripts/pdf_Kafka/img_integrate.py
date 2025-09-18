@@ -131,11 +131,11 @@ class img_integrate(imgData_2D.imgData_2D):
             return self.merged_poin
             
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return self.poni_pe1c
             
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return self.poni_pe2c
 
         else:
@@ -148,11 +148,11 @@ class img_integrate(imgData_2D.imgData_2D):
             return np.load(self.stitched_mask)
             
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return np.load(self.mask_pe1c)
             
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return np.load(self.mask_pe2c)
 
         else:
@@ -246,13 +246,13 @@ class img_integrate(imgData_2D.imgData_2D):
         if 'pilatus' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.iq')
 
-        elif 'pe1c' in self.detector:
-            if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+        elif 'pe1' in self.detector:
+            if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
                 iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.iq')
             else:
                 iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_SAXS.iq')
 
         else:
