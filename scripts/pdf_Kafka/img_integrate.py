@@ -89,7 +89,7 @@ class img_integrate(imgData_2D.imgData_2D):
             n_folder = self.pe1c_PDF
 
         elif self.acq_mode() == 'XRD':
-            n_folder = self.pilatus_XRD
+            n_folder = self.pe1c_XRD
         
         else:
             n_folder = self.pe1c_PDF

@@ -154,6 +154,8 @@ if os.environ.get('USE_MMM_RE', False):
     RE.beamtime = bt
     RE.clear_suspenders()
 
+## Added by CHL on 2025/0924 
+set_beamdump_suspender(RE)
 
 # Remove plans Qserver can't interpret
 if is_re_worker_active():

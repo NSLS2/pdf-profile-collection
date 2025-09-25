@@ -146,7 +146,7 @@ class imgData_2D(imgData_config):
     def temperature(self):
         try:
             # temp_controller = self.get('TEMPERATURE', 'temp_controller', fallback='No_temp_controller')
-            T = self.run.start['more_info'][self.T_controller]
+            T = float(self.run.start['more_info'][self.T_controller])
 
         except (KeyError, IndexError, TypeError):
             T = 'None'
@@ -164,7 +164,7 @@ class imgData_2D(imgData_config):
         T = self.temperature
 
         if type(T) is float:
-            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T}_K'
+            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_K'
 
         else:
             return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}'
@@ -278,13 +278,14 @@ class imgData_2D(imgData_config):
 
     def sub_dk_img(self):
 
-        raw_img = getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0]
+        raw_img = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
 
         dk_uid = self.run.start['sc_dk_field_uid']
         dk_run = self.tiled_client[dk_uid]
-        dk_img = getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0]
+        dk_img = np.float32(getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0])
+        # dk_img = 0.0
 
-        sub_img = np.float32(raw_img-dk_img)
+        sub_img = raw_img-dk_img
 
         return sub_img
 

@@ -94,4 +94,4 @@ def _stateful_configure_ad(exposure: float):
     )
 
 
-# xpdacq.beamtime._configure_area_det = _stateful_configure_ad
+xpdacq.beamtime._configure_area_det = _stateful_configure_ad

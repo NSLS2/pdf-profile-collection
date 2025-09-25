@@ -6,6 +6,7 @@ from bluesky_kafka.consume import BasicConsumer
 import matplotlib.pyplot as plt
 import numpy as np
 from tiled.client import from_profile, from_uri
+import time
 
 
 import importlib
@@ -49,89 +50,69 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
         name, message = doc
         # print(
         #     f"\n{datetime.datetime.now().isoformat()} document: {name}\n"
-        # #     f"\ndocument keys: {list(message.keys())}\n"
-        # #     f"\ncontents: {pprint.pformat(message)}\n"
+        #     f"\ndocument keys: {list(message.keys())}\n"
+        #     # f"\ncontents: {pprint.pformat(message)}\n"
         # )
 
-        if (name == 'start') and ('topic' not in message):
+        try:
+            start_process = ('sc_dk_field_uid' in message) or ('pilatus' in message['detectors'][0])
+        except KeyError:
+            start_process = False
+        
+        if (name == 'start') and start_process:
             print(
                 "\n*********************************************************\n"
                 f"\n\n{datetime.datetime.now().isoformat()} documents {name}\n"
-                # f"document keys: {list(message.keys())}"
+                f"document keys: {list(message.keys())}\n"
                 f"\n{message['uid'] = }\n")
-            try:
-                print(f"\n{message['topic'] = }\n")
-            except KeyError:
-                print(f"\nThis document has no topic.\n")
                   
-            global img_analyzer
+            print(f"\nThis is a data scan not dark scan. Start to process data.\n")
+
             uid = message['uid']
             meta = tiled_client[uid].start
+
             print(f"\n{meta['calibration_md']['Distance'] = }\n")
-            
+
+            global img_analyzer
             img_analyzer = img_getpdf.img_getpdf(uid, tiled_client, sandbox_tiled, ini_config)
             
+            try:
+                print(f"\n{message['sc_dk_field_uid'] = }\n")
+            except KeyError:
+                print(f"\nUsing pilatus, so there is no dark scan.\n")
+
+
             print(f'\n{img_analyzer.acq_mode() = }\n')
+            
+            ## a reminder to start data processing
+            k_log.do_process = True
+            print(f'\n{k_log.do_process = }\n')
         
-        
-        elif (name == 'stop') and ('topic' not in message):
+
+        if (name == 'stop') and (k_log.do_process):
             print(
                 "\n*********************************************************\n"
                 f"\n{datetime.datetime.now().isoformat()} documents {name}\n"
                 f"\ndocument keys: {list(message.keys())}\n"
                 f"\ncontents: {pprint.pformat(message['num_events'])}\n"
                 )
-            try:
-                print(f"\n{message['topic'] = }\n")
-            except KeyError:
-                print(f"\nThis document has no topic.\n")
 
             stream_name = list(message['num_events'].keys())
             img_analyzer.stream_name = stream_name
             print(f'\n{stream_name = }\n')
-        
-        
-        
-        elif (name == 'event') and ('topic' in message):
-            print(
-                "\n*********************************************************\n"
-                f"\n{datetime.datetime.now().isoformat()} documents {name}\n"
-                f"\ndocument keys: {list(message.keys())}\n"
-                )
-            try:
-                print(f"\n{message['topic'] = }\n")
-            except KeyError:
-                print(f"\nThis document has no topic.\n")
-
-            dksub_uid = message["data"]['tiled_dk_sub_image']['uid']
-            img_analyzer.dksub_uid = dksub_uid
-
-
-
-        # elif (name == 'stop') and ('topic' in message) and (message['num_events']['primary']==3):
-        elif (name == 'stop') and ('topic' in message):
-            print(
-                "\n*********************************************************\n"
-                f"\n{datetime.datetime.now().isoformat()} documents {name}\n"
-                f"\ndocument keys: {list(message.keys())}\n"
-                f"\ncontents: {pprint.pformat(message['num_events'])}\n"
-                )
-            try:
-                print(f"\n{message['topic'] = }\n")
-            except KeyError:
-                print(f"\nThis document has no topic.\n")
 
             ## Start plotter for visualization
             plotter = img_plotter.img_plotter(img_analyzer.sample_name, color_str=k_log.color_str)
 
             ## Sum three images at three positions
-            if message['num_events']['primary']==3:
+            time.sleep(1) ## wait for data saved into data broker
+            if len(message['num_events'])==3:
                 print(f"\nStart to stitch {img_analyzer.run.start['sp_detector']} data: uid = {img_analyzer.uid}\n")
                 img_analyzer.save_img_pilatus()
                 print(f'\nApply mask {img_analyzer.stitched_mask = }\n')
                 
             ## Process pe1c data without stitching 
-            elif message['num_events']['primary']==1:
+            elif len(message['num_events'])==1:
                 print(f"\nStart to process {img_analyzer.run.start['detectors'][0]} data: uid = {img_analyzer.uid}\n")
                 img_analyzer.save_img_perkin()
                 print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
@@ -174,10 +155,13 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
 
 
             k_log.colo_str = plotter.color_str
+            
+            # a reminder to finish data processing
+            k_log.do_process = False
+            print(f'\n{k_log.do_process = }\n')
             print('\n########### Events printing division ############\n')
       
            
-        
 
     kafka_config = _read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
 

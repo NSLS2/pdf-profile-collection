@@ -158,6 +158,14 @@ def show_me_db2(
     show_me2(my_im, count_low=count_low, count_high=count_high, use_colorbar=use_colorbar, use_cmap=use_cmap)
 
 
+## Added by CHL 2025/09/19
+def tqdm_sleep(rest_time, message='Sleep'):
+    from tqdm import tqdm
+    for j in tqdm(range(0,100), desc=message):
+        time.sleep(rest_time/100)
+
+
+
 ####### convinence functions by Dan - 1/24/2023 ############
 def set_Pilatus_energy_for_threshold(energy = 74.0):
     """ Default to energy = 74 (in keV), but can pass something else if you want """
@@ -165,22 +173,22 @@ def set_Pilatus_energy_for_threshold(energy = 74.0):
     caput('XF:28ID1-ES{Det:Pilatus}cam1:Energy', energy)
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ThresholdEnergy', energy/2)
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ThresholdApply', 1)
-    time.sleep(8)
+    tqdm_sleep(8)
 
 def reset_Pilatus_Power(delay=15.0):
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ResetPowerTime', delay)
     t0=time.time()
     print ('performing Pilatus module power reset, please wait '+str(delay)+' seconds')
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ResetPower', 1)
-    time.sleep(delay)
+    tqdm_sleep(delay)
     print ('sleep time done, now waiting a bit more')
-    time.sleep(8)
+    tqdm_sleep(8)
     print ('coming back online, need another 20 seconds')
-    time.sleep(20)
+    tqdm_sleep(20)
 
 def set_Pilatus_parameters(num_images=1, exposure_time=0.1):
     print ('setting number of images per collection to '+str(num_images))
     pilatus1.set_num_images(num_images)
     print ('setting exposure time for a single image to '+str(exposure_time))
     pilatus1.set_exposure_time(exposure_time)
-    time.sleep(1)
+    tqdm_sleep(1)

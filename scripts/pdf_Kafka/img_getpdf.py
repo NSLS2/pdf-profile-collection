@@ -59,6 +59,7 @@ class img_getpdf(img_integrate.img_integrate):
             'rmax':             self.getfloat('pdfgetx3', 'rmax', fallback=100.0), 
             'rstep':            self.getfloat('pdfgetx3', 'rstep', fallback=0.1), 
             'composition':      self.run.start['composition_string'], 
+            'temperature_K':    self.temperature, 
             }
 
     

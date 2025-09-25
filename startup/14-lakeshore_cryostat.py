@@ -51,13 +51,22 @@ from ophyd.status import SubscriptionStatus, MoveStatus
 
 def temperature_pbar(start_T, stop_T, T_callable, tolerance, status):
     from tqdm import tqdm
+
+    if start_T > stop_T: ## ramping down
+        tolerance = abs(tolerance) * -1
+    elif start_T < stop_T: ## ramping up
+        tolerance = abs(tolerance)
+    else:
+        pass
+
     with tqdm(total=100, desc=f'Target: {T_callable.get()}/{stop_T} K') as pbar:
-        percent_T = 0
+        # percent_T = 0
         while not status.success:
-            status.check_value(new_value=stop_T-tolerance, old_value=T_callable.get())
-            percent_T = round(100*abs((T_callable.get()-start_T)/(stop_T-tolerance-start_T)), 2) - percent_T
-            pbar.set_description(f'Target: {T_callable.get()}/{stop_T} K')
-            pbar.update(percent_T)
+            status.check_value(new_value=stop_T, old_value=T_callable.get())
+            percent_T = round(100*abs((T_callable.get()-start_T)/(stop_T-tolerance-start_T)), 2)
+            pbar.n = percent_T
+            pbar.set_description(f'Target: {T_callable.get()}/{stop_T}\xB1{abs(tolerance)} K')
+            pbar.refresh()
             time.sleep(2)
         
         print('\n################## Reach Target #######################\n')
@@ -111,7 +120,8 @@ class Lakeshore336Setpoint2(PVPositioner):
         if self.range_status.get() == new_range:
             return DeviceStatus(self, success=True, done=True)
         else:
-            return super().set(new_range, *args, timeout=timeout, wait=wait, **kwargs)
+            # return super().set(new_range, *args, timeout=timeout, wait=wait, **kwargs)
+            return self.range_selection.put(new_range)
 
 
 class Lakeshore336_2(Device):
