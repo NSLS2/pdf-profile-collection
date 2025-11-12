@@ -57,7 +57,14 @@ def pbar_set_temp(temp_controller = eurotherm3504, ramprate = 5, setpoint = 25, 
     
     print(f'\nSet {temp_controller.name} to temperature = {new_temp} K, using ramp rate = {ramprate}\n')
     yield from bps.mv(temp_controller.ramprate, ramprate, temp_controller.setpoint, new_temp)
-    
+
+    ## for cs800 (cryostream), it needs to be triggered
+    if temp_controller.name == 'cs800':
+        yield from bps.mv(temp_controller.trig, 11)
+        #wait 5 second to allow phaseID update after trigger
+        tqdm_sleep(7, message='Wait after trigger')
+        print('\n')
+ 
     status = SubscriptionStatus(T_from_sensor, run=True, callback=_check_setpoint)
 
     status = temperature_pbar(start_T, temp_controller.setpoint.get(), T_from_sensor, tolerance, status)

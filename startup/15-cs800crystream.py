@@ -13,6 +13,10 @@ class CS800TemperatureController(PVPositioner):
     trig = Cpt(EpicsSignal,'Cmd-Cmd')
     coolsetpoint = C(EpicsSignal, 'T:Cool-SP')
     #targettemp = C(EpicsSignalRO, 'T:Target-I')
+
+    ## Add by CHLin om 2025/10/17
+    ramprate = C(EpicsSignal, 'T:RampRate-SP', kind='hinted')
+
     def set(self, *args, timeout=None, **kwargs):
         return super().set(*args, timeout=timeout, **kwargs)
 
@@ -48,6 +52,37 @@ class CS800TemperatureController(PVPositioner):
             return DeviceStatus(self,done = True, success=True)
         else:
             raise ValueError('cs800 is shutdown mode, please restart it')
+        
+    ## Add by CHLin om 2025/10/17
+    def set_and_check(self, setpoint, ramprate=360, tolerance=0.5):
+        new_temp = setpoint
+        T_from_sensor = self.readback
+        start_T = T_from_sensor.get()
+
+        def _check_setpoint(new_value, old_value, **kwargs):
+            if abs(new_value - T_from_sensor.get()) < tolerance:
+                # print(f'Reached setpoint {T_from_sensor.get()}.')
+                return True
+            return False
+        
+        print(f'\nSet {self.name} to temperature = {new_temp} K, using ramp rate = {ramprate}\n')
+        # yield from bps.mv(self.ramprate, ramprate, temp_controller.setpoint, new_temp)
+        self.ramprate.put(ramprate)
+        self.setpoint.put(setpoint)
+
+        ## for cs800 (cryostream), it needs to be triggered
+        if self.name == 'cs800':
+            # yield from bps.mv(temp_controller.trig, 11)
+            self.trig.put(11, wait=True)
+            #wait 5 second to allow phaseID update after trigger
+            tqdm_sleep(7, message='Wait after trigger')
+        print('\n')
+    
+        status = SubscriptionStatus(T_from_sensor, run=True, callback=_check_setpoint)
+
+        status = temperature_pbar(start_T, self.setpoint.get(), T_from_sensor, tolerance, status)
+            
+        return status
 
 
 # To allow for sample temperature equilibration time, increase

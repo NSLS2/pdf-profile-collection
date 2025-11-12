@@ -2,8 +2,8 @@ import shutil
 config_dir = "/nsls2/data/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/"
 "Define Beamline Modes"
 
-def change_energy(option=None):   
-    file_path = "~/Documents/MA/Look_up_table.xlsx"
+def change_energy(option=None, file_path="~/Documents/MA/Look_up_table.xlsx"):   
+    # file_path = file_path
     df = pd.read_excel(file_path)
     Ophyd_object_setpoint = []
     

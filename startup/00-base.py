@@ -67,7 +67,8 @@ nslsii.configure_base(
     mpl=False,
     publish_documents_with_kafka=True,
     redis_url="info.pdf.nsls2.bnl.gov"
-)
+)   
+# Updated by CHL on 2025/11/01 since too much non-necessary info in redis
 
 
 
