@@ -114,7 +114,10 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             ## Process pe1c data without stitching 
             elif len(message['num_events'])==1:
                 print(f"\nStart to process {img_analyzer.run.start['detectors'][0]} data: uid = {img_analyzer.uid}\n")
-                img_analyzer.save_img_perkin()
+                if 'pilatus' in img_analyzer.run.start['detectors'][0]:
+                    img_analyzer.save_single_pilatus()
+                else:
+                    img_analyzer.save_img_perkin()
                 print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
                 
             ## Plot unmasked 2D image rings with histogram

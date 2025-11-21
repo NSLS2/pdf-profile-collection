@@ -323,4 +323,41 @@ class imgData_2D(imgData_config):
 
         return self.process_img
 
+
+
+    def save_single_pilatus(self):
+
+        self.process_img = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+
+
+        # # self.process_img = self.sandbox_tiled[self.dksub_uid].read()
+        
+        # ## After data security, data transfer of pdfstream is done by 0MQ not Kafka 
+        # self.process_img = self.sub_dk_img()
+
+        if self.use_flat_field_pe1c or self.use_flat_field_pe2c:
+            if 'pe1' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+            elif 'pe2' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe2c)
+            else:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+
+            self.process_img = self.process_img / flat_field
+
+        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        
+        if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+        
+        elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+        
+        else:
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+        
+        tifffile.imsave(tiff_fn, self.process_img)
+        print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
+
+        return self.process_img
         

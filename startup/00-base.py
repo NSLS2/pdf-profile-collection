@@ -68,8 +68,20 @@ nslsii.configure_base(
     publish_documents_with_kafka=True,
     redis_url="info.pdf.nsls2.bnl.gov"
 )   
-# Updated by CHL on 2025/11/01 since too much non-necessary info in redis
 
+
+# Added by CHL on 2025/11/18 to remove items from RE.md since too much non-necessary info in redis
+from redis_json_dict import RedisJSONDict
+def remove_keys_redis(redis_dict: RedisJSONDict, prefix: str ='PDF:'):
+    # key_list = []
+    for key, value in redis_dict.items():
+        if prefix in key:
+            # key_list.append(key)
+            redis_dict.__delitem__(key)
+
+    return redis_dict
+
+RE.md = remove_keys_redis(RE.md, prefix='PDF:')
 
 
 # from redis_json_dict import RedisJSONDict

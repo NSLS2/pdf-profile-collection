@@ -101,6 +101,42 @@ def measurement_data(): # .......Captures metadata
     return info_dict
 
 
+# from xpdacq.xpdacq import inject_metaddta
+
+def _inject_pilatus_3pos(msg):
+    """Inject the 3 positions of Pilstus in start.
+
+        Tried on 2025/11/18 by CHL and doesn't work.
+        msg.kwargs only goes into metadata when msg.command=='opend_run'. 
+    """
+    # if msg.command == "open_run" and msg.kwargs.get("dark_frame") is not True:
+    if msg.command == "create":
+        print(f'\n{msg.command = }\n')
+        x:dict = Grid_X.read()['Grid_X']
+        y:dict = Grid_Y.read()['Grid_Y']
+        print(f'\n{x = }\n')
+        
+        # x:dict = 22
+        # y:dict = 12
+    
+        try:
+            msg.kwargs["Pilatus_3pos_x"].append(x)
+            msg.kwargs["Pilatus_3pos_x"].append(y)
+
+        except KeyError:
+            msg.kwargs["Pilatus_3pos_x"] = [x]
+            msg.kwargs["Pilatus_3pos_y"] = [y]
+
+        print(f'\n{msg.kwargs = }\n')
+
+    else:
+        print(f'\n{msg.command = }\n')
+        print(f'\n{msg.kwargs = }\n')
+
+    return msg
+
+
+
 def pila_3pos(dets, exposure, extra_md={}):    
     """
     Take one reading from area detector with given exposure time
@@ -143,11 +179,12 @@ def pila_3pos(dets, exposure, extra_md={}):
             "sp_plan_name": "pila_3pos",
             "sp_detector": area_det.name, 
             "detectors": [area_det.name],
+            # "Pilatus_3pos_x": [],
+            # "Pilatus_3pos_y": [],
             # "data_keys": "pe1c_image", 
         },
     )
     _md.update(extra_md)
-
 
     #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
     det_x_pos = [20.644, 11.356, 16]
@@ -193,11 +230,26 @@ def pila_3pos(dets, exposure, extra_md={}):
                 yield from bps.mv(fs, 1)
                 print(f'Open shutter for Pilatus position {i}')
                 yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                # trigger_det_mutator = trigger_det(f"{area_det.name}_pos{i}")
+                # trigger_det_mutator = bpp.msg_mutator(trigger_det_mutator, _inject_pilatus_3pos)
+                # trigger_det_mutator = periodic_dark(trigger_det_mutator)
                 yield from periodic_dark(trigger_det(f"{area_det.name}_pos{i}"))
+                # yield from trigger_det_mutator
                 yield from bps.mv(fs, 0)
                 print(f'Finish Pilatus position {i} and close shutter')
     
+    # plan_msg_mutator = pdf_RE_inner(area_det)
+    # plan_msg_mutator = bpp.msg_mutator(plan_msg_mutator, _inject_pilatus_3pos)
     yield from pdf_RE_inner(area_det)
+
+
+
+def pila_3pos_mu(dets, exposure, md):
+    grand_plan = pila_3pos(dets, exposure, extra_md=md)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_pilatus_3pos)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
+    return (yield from grand_plan)
 
 
 
@@ -478,7 +530,8 @@ def pre_pila_3pos(dets, extra_md={}):
             yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
             
             yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}", wait=True))
-            
+    
+    # inner_scan_msg_mutator = 
     yield from inner_scan(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos)
 
 
@@ -593,10 +646,10 @@ def jog_loop(exposure, motor, start, stop):
 
 
 
-def tirgger_pila(dets, exposure, sample_name, md):
+def tirgger_pila(dets, exposure, md):
             
     _md = md or {}
-    _md['sample_name'] = sample_name
+    # _md['sample_name'] = sample_name
     sp_md = yield from _pre_plan(dets, exposure)
     sp_md["sp_plan_name"] = "tirgger_pila",
     _md.update(sp_md)
@@ -630,9 +683,13 @@ def tirgger_pila(dets, exposure, sample_name, md):
         
         def _trigger_3pos():
             for i in range(len(det_x_pos)):
-                # yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from bps.mv(fs, 1)
+                print(f'Open shutter for Pilatus position {i}')
                 # yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}"))
                 yield from trigger_and_wait(f"{dets[0].name}_pos{i}")
+                yield from bps.mv(fs, 0)
+                print(f'Finish Pilatus position {i} and close shutter')
 
         yield from _trigger_3pos()
                     
@@ -641,9 +698,9 @@ def tirgger_pila(dets, exposure, sample_name, md):
 
 
 
-def trigger_areaDet(dets, exposure, stream_name, sample_name, md):
+def trigger_areaDet(dets, exposure, stream_name, md):
     _md = md or {}
-    _md['sample_name'] = sample_name
+    # _md['sample_name'] = sample_name
     sp_md = yield from _pre_plan(dets, exposure)
     sp_md["sp_plan_name"] = "trigger_areaDet",
     _md.update(sp_md)
@@ -667,9 +724,35 @@ def trigger_areaDet(dets, exposure, stream_name, sample_name, md):
 
 from xpdacq.xpdacq import _inject_qualified_dark_frame_uid, _inject_calibration_md, _inject_analysis_stage
 
-def scan_with_dark(dets, exposure, stream_name='primary', sample_name='test', md=None):
+def scan_with_dark(dets: list, 
+                   exposure: float, 
+                   sample_ID: int=0, 
+                   sample_info: dict={}, 
+                   md: dict={}, 
+                   stream_name: str='primary', 
+                   ):
+    
+    ## Inject sample metadata from Excel spreadsheet
+    try:
+        sample_meta:dict = bt.samples.sel(sample_ID)
+        
+    ## Inject sample metadata manually from sample_info
+    except (KeyError, IndexError):
+        sample_meta:dict = sample_info
+
+    print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
+    
+    ## Check composition string
+    try:
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} *****\n')
+    except KeyError:
+        sample_meta["composition_string"] = 'Ni1.0'
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} (dummy) *****\n')
+    
+    md.update(sample_meta)
+
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = trigger_areaDet(dets, exposure, stream_name, sample_name, md)
+    grand_plan = trigger_areaDet(dets, exposure, stream_name, md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
@@ -687,13 +770,35 @@ def scan_3pos(dets, exposure, sample_name='test', md={}):
 
 
 
-## Updated by CHLin on 2025/10/19
-def scan_3pos_xlsx(dets, exposure, sample_ID, md={}):
-    ## while passing plan as a generator, no need to add "yield from"
-    sample_name = bt.samples.sel(sample_ID)['sample_name']
-    composition_string = bt.samples.sel(sample_ID)['composition_string']
-    md.updaate({'composition_string':composition_string})
-    grand_plan = tirgger_pila(dets, exposure, sample_name, md)
+## Updated by CHLin on 2025/11/18
+def scan_3pos_xlsx(dets: list, 
+                   exposure: float, 
+                   sample_ID: int=0, 
+                   sample_info: dict={}, 
+                   md: dict={}, 
+                   ):
+    
+    ## Inject sample metadata from Excel spreadsheet
+    try:
+        sample_meta:dict = bt.samples.sel(sample_ID)
+
+    ## Inject sample metadata manually from sample_info
+    except (KeyError, IndexError):
+        sample_meta:dict = sample_info
+
+    print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
+
+    ## Check composition string
+    try:
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} *****\n')
+    except KeyError:
+        sample_meta["composition_string"] = 'Ni1.0'
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} (dummy) *****\n')
+    
+    md.update(sample_meta)
+
+    ## while passing plan as a generator, no need to add "yield from"   
+    grand_plan = tirgger_pila(dets, exposure, md)
     # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)

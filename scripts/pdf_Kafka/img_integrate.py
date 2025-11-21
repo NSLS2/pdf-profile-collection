@@ -210,7 +210,7 @@ class img_integrate(imgData_2D.imgData_2D):
         
         ## Create an array to hold outlier mask
         outlier_mask_2d = np.zeros_like(i2d)     
-        mask1 = np.array(i2d<1)*1
+        mask1 = np.array(i2d<0)*1  ## Change to <0 by CHL on 2025/11/12
         
         ## Apply percentile filter along radial direction (axis=0)
         for ii, dd in enumerate(i2d.T):
