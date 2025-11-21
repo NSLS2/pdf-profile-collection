@@ -198,19 +198,19 @@ class img_integrate(imgData_2D.imgData_2D):
         ## q1d.shape is (self.npt_rad, )
         i2d, q1d, chi1d = self.ai.integrate2d(self.process_img, self.npt_rad, 
                                          unit=self.UNIT, npt_azim=self.npt_azim, 
-                                         polarization_factor=self.polarization, 
-                                         mask=self.mask_array) 
+                                         polarization_factor=self.polarization, )
+                                        #  mask=self.mask_array) 
         
         ## trasnform self.mask_array (base mask) to the same coordinate space and cast it as type bool
         intrinsic_mask_unrolled, _, _ = self.ai.integrate2d(self.mask_array, self.npt_rad, 
                                                        unit=self.UNIT, npt_azim=self.npt_azim, 
-                                                       polarization_factor=self.polarization, 
-                                                       mask=self.mask_array)
+                                                       polarization_factor=self.polarization, )
+                                                    #    mask=self.mask_array)
         #intrinsic_mask_unrolled = intrinsic_mask_unrolled.astype(bool) 
         
         ## Create an array to hold outlier mask
         outlier_mask_2d = np.zeros_like(i2d)     
-        mask1 = np.array(i2d<0)*1  ## Change to <0 by CHL on 2025/11/12
+        mask1 = np.array(i2d<1)*1
         
         ## Apply percentile filter along radial direction (axis=0)
         for ii, dd in enumerate(i2d.T):
