@@ -280,12 +280,17 @@ class imgData_2D(imgData_config):
 
         raw_img = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
 
-        dk_uid = self.run.start['sc_dk_field_uid']
-        dk_run = self.tiled_client[dk_uid]
-        dk_img = np.float32(getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0])
-        # dk_img = 0.0
+        try:
+            dk_uid = self.run.start['sc_dk_field_uid']
+            dk_run = self.tiled_client[dk_uid]
+            dk_img = np.float32(getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0])
+            # dk_img = 0.0
 
-        sub_img = raw_img-dk_img
+            sub_img = raw_img-dk_img
+
+        except KeyError:
+            sub_img = raw_img
+            print('\n******* No dark uid found. Export image without dark subtraction. *******\n')
 
         return sub_img
 

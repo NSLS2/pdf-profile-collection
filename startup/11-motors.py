@@ -5,6 +5,28 @@ from ophyd.device import DeviceStatus
 from nslsii.devices import TwoButtonShutter as _TwoButtonShutter
 #import nslsii.devices
 
+
+## Created by CHL on 2025/12/08 for adding high limit(HLM), low limit(LLM), 
+## and velocity max(VMAX) to EpicsMotor class
+class xf28id1_Motor(EpicsMotor):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    HLM = Cpt(EpicsSignal, '.HLM')
+    LLM = Cpt(EpicsSignal, '.LLM')
+    VMAX = Cpt(EpicsSignal, '.VMAX')
+
+OT_stage_1_X = xf28id1_Motor('XF:28ID1-ES{Det-Ax:X1}Mtr', name='OT_stage_1_X', labels=['positioners'])
+OT_stage_1_Y = xf28id1_Motor('XF:28ID1B-ES{Stg:FTIR-Ax:Y}Mtr', name='OT_stage_1_Y', labels=['positioners'])
+
+OT_stage_2_X = xf28id1_Motor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X', labels=['positioners'])
+OT_stage_2_Y = xf28id1_Motor('XF:28ID1B-ES:1{Sample:Tbl-Ax:Y1}Mtr', name='OT_stage_2_Y', labels=['positioners'])
+
+broadside45_shifter = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter') 
+Multi_X = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X') 
+
+
 #Under 28ID Main: Bridge Motions
 Det_1_X = EpicsMotor('XF:28ID1B-ES{Det:1-Ax:X}Mtr', name='Det_1_X', labels=['positioners'])
 Det_1_Y = EpicsMotor('XF:28ID1B-ES{Det:1-Ax:Y}Mtr', name='Det_1_Y', labels=['positioners'])
@@ -128,8 +150,8 @@ ECS_An_th = EpicsMotor('XF:28ID1B-ES{ECS-Ax:Th2}Mtr', name='ECS_An_th', labels=[
 ECS_det1 = EpicsSignalRO(  'XF:28IDC-BI:1{IM:1}:C4_1' ,name='ECS_det1')
 
 #45-degree shifting motor on M6-grid, for use with hot air blower / cryostream with angled sample bracket
-broadside45_shifter = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter') 
-Multi_X = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X') 
+# broadside45_shifter = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter') 
+# Multi_X = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X') 
 
 #NOx BOx x/y sample position
 noxbox_x = EpicsMotor('XF:28ID1B-ES{NOx-Ax:X}Mtr', name='noxbox_x')
@@ -138,11 +160,11 @@ Noxbox_X = EpicsMotor('XF:28ID1B-ES{NOx-Ax:X}Mtr', name='noxbox_X')
 Noxbox_Y = EpicsMotor('XF:28ID1B-ES{NOx-Ax:Y}Mtr', name='noxbox_Y')
 
 #Table stages
-OT_stage_1_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X1}Mtr', name='OT_stage_1_X', labels=['positioners'])
-OT_stage_1_Y = EpicsMotor('XF:28ID1B-ES{Stg:FTIR-Ax:Y}Mtr', name='OT_stage_1_Y', labels=['positioners'])
+# OT_stage_1_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X1}Mtr', name='OT_stage_1_X', labels=['positioners'])
+# OT_stage_1_Y = EpicsMotor('XF:28ID1B-ES{Stg:FTIR-Ax:Y}Mtr', name='OT_stage_1_Y', labels=['positioners'])
 
-OT_stage_2_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X', labels=['positioners'])
-OT_stage_2_Y = EpicsMotor('XF:28ID1B-ES:1{Sample:Tbl-Ax:Y1}Mtr', name='OT_stage_2_Y', labels=['positioners'])
+# OT_stage_2_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X', labels=['positioners'])
+# OT_stage_2_Y = EpicsMotor('XF:28ID1B-ES:1{Sample:Tbl-Ax:Y1}Mtr', name='OT_stage_2_Y', labels=['positioners'])
 
 #Beamstopper not on Detector (8/25/2025) it is OT_stage_3_X and is being used for Bstop_TBL_X
 OT_stage_3_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X3}Mtr', name='OT_stage_3_X', labels=['positioners'])

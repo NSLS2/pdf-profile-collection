@@ -569,8 +569,10 @@ def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
 def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
     """Take a count while "rocking" the y-position"""
 
+
     det_x_pos = [20.644, 11.356, 16]
     det_y_pos = [-3.356, -12.644, -8]
+
 
     if 'det_x_pos' in md.keys():
         det_x_pos = md['det_x_pos']
@@ -584,7 +586,16 @@ def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
     _md["plan_name"] = "jog_pila_3pos"
     _md["jog_md"] = {"start": start, "stop": stop, "motor": motor.name}
 
-    # @bpp.reset_positions_decorator([motor.velocity])
+
+    # nonlocal start, stop
+    @bpp.reset_positions_decorator([motor.velocity])
+    def inner_jog(gp, motor=motor, start=start, stop=stop):
+        yield from bps.mv(motor, start)  # got to initial position
+        yield from bps.mv(motor.velocity, abs(stop-start)/(exposure+2.0), timeout=1)  # set velocity
+        # gp = short_uid("rocker")
+        yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+
+
     def per_shot(dets):
 
         def trigger_and_wait(stream_name, wait=True):
@@ -597,20 +608,20 @@ def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
                 yield from bps.read(Grid_Y)
                 yield from bps.save()
 
-        nonlocal start, stop
-        @bpp.reset_positions_decorator([motor.velocity])
-        def inner_jog(gp):
-            yield from bps.mv(motor, start)  # got to initial position
-            yield from bps.mv(motor.velocity, abs(stop-start)/(exposure+2.0), timeout=1)  # set velocity
-            # gp = short_uid("rocker")
-            yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+        nonlocal motor, start, stop
+        # @bpp.reset_positions_decorator([motor.velocity])
+        # def inner_jog(gp):
+        #     yield from bps.mv(motor, start)  # got to initial position
+        #     yield from bps.mv(motor.velocity, abs(stop-start)/(exposure+2.0), timeout=1)  # set velocity
+        #     # gp = short_uid("rocker")
+        #     yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
 
         for i in range(len(det_x_pos)):
             print(f'num of pila_img{i = }')
-            # yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+            yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
             
             gp = short_uid("rocker")
-            yield from inner_jog(gp)
+            yield from inner_jog(gp, motor=motor, start=start, stop=stop)
             
             yield from bps.mv(fs, 1)
             print(f'Open shutter for Pilatus position {i}')
@@ -630,23 +641,86 @@ def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
 
 def jog_loop(exposure, motor, start, stop):
 
-    yield from bps.mv(motor, start)  # got to initial position
+    yield from bps.mv(motor, start)  # go to initial position
     
-    motor_max_velocity = 10 ## mm/s need to obtain from ophyd object
-    calculated_velocity = abs(stop-start)/(exposure)
+    motor_max_velocity = 5 #motor.VMAX.get() # read from ophyd object
+    jog_distance = motor_max_velocity * exposure
+    print(f'{jog_distance = } mm/s')
+    sample_distance = abs(stop-start)
+    print(f'{sample_distance = } mm')
+    num_jogging = int(jog_distance/sample_distance)
 
-    if calculated_velocity <= motor_max_velocity:
-        pass
-    else:
-        calculated_velocity = motor_max_velocity
+    @bpp.stage_decorator([motor])
+    def inner_jog(motor=motor, start=start, stop=stop, jog_distance=jog_distance, sample_distance=sample_distance):
+        gp = short_uid("rocker")
+        for i in range(num_jogging):            
+        # while jog_distance-sample_distance > 0:
+            yield from bps.abs_set(motor, stop, )  # set motor to move towards end
+            yield from bps.abs_set(motor, start, )  # go to initial position
+            # yield from bps.mv(motor, start, )  # set motor to move towards end
 
-    yield from bps.mv(motor.velocity, calculated_velocity, timeout=1)  # set velocity
-    # gp = short_uid("rocker")
-    yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+            jog_distance -= sample_distance
+            print(f'{jog_distance = } mm/s')
+
+        yield from bps.wait(group=gp)
+    
+    yield from inner_jog()  # set motor to move towards end
 
 
 
-def tirgger_pila(dets, exposure, md):
+def tirgger_pila(dets, exposure, sample_name, md):
+            
+    _md = md or {}
+    _md['sample_name'] = sample_name
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "tirgger_pila",
+    _md.update(sp_md)
+
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in md.keys():
+        det_x_pos = md['det_x_pos']
+
+    if 'det_y_pos' in md.keys():
+        det_y_pos = md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+    
+    @bpp.stage_decorator(dets+motors)
+    @bpp.run_decorator(md=_md)
+    def _RE_inner(dets, det_x_pos, det_y_pos):
+        
+        def trigger_and_wait(stream_name) -> MsgGenerator:
+            for det in dets:
+                ret = {}
+                yield from bps.trigger(det, wait=True)
+                yield from bps.create(name=stream_name)
+                reading = (yield from bps.read(det))
+                # yield from bps.read(Grid_X)
+                # print(f"reading = {reading}")
+                # ret.update(reading)
+                return (yield from bps.save())
+        
+        def _trigger_3pos():
+            for i in range(len(det_x_pos)):
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from bps.mv(fs, 1)
+                print(f'Open shutter for Pilatus position {i}')
+                # yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}"))
+                yield from trigger_and_wait(f"{dets[0].name}_pos{i}")
+                yield from bps.mv(fs, 0)
+                print(f'Finish Pilatus position {i} and close shutter')
+
+        yield from _trigger_3pos()
+                    
+    yield from _RE_inner(dets, det_x_pos, det_y_pos)
+
+
+
+
+def tirgger_pila_xlsx(dets, exposure, md):
             
     _md = md or {}
     # _md['sample_name'] = sample_name
@@ -698,7 +772,32 @@ def tirgger_pila(dets, exposure, md):
 
 
 
-def trigger_areaDet(dets, exposure, stream_name, md):
+def trigger_areaDet(dets, exposure, sample_name, stream_name, md):
+    _md = md or {}
+    _md['sample_name'] = sample_name
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "trigger_areaDet",
+    _md.update(sp_md)
+
+    @bpp.stage_decorator(dets)
+    @bpp.run_decorator(md=_md)
+    def trigger_and_wait() -> MsgGenerator:
+        for det in dets:
+            ret = {}
+            yield from bps.trigger(det, wait=True)
+            yield from bps.create(name=stream_name)
+            reading = (yield from bps.read(det))
+            # yield from bps.read(Grid_X)
+            # print(f"reading = {reading}")
+            # ret.update(reading)
+            return (yield from bps.save())
+        
+    return (yield from periodic_dark(trigger_and_wait()))
+
+
+
+
+def trigger_areaDet_xlsx(dets, exposure, stream_name, md):
     _md = md or {}
     # _md['sample_name'] = sample_name
     sp_md = yield from _pre_plan(dets, exposure)
@@ -752,7 +851,7 @@ def scan_with_dark(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = trigger_areaDet(dets, exposure, stream_name, md)
+    grand_plan = trigger_areaDet_xlsx(dets, exposure, stream_name, md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
@@ -798,7 +897,7 @@ def scan_3pos_xlsx(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"   
-    grand_plan = tirgger_pila(dets, exposure, md)
+    grand_plan = tirgger_pila_xlsx(dets, exposure, md)
     # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
@@ -816,6 +915,19 @@ def pd_counts(dets, exposure, sample_name='test', md=None):
 
     yield from periodic_dark(count(dets, md=_md))
 
+
+import h5py
+from skimage import io
+def nxs_to_tiff(fn:str, key:str=None):
+    if key is None:
+        key = 'entry/instrument/detector/data'
+    
+    f_h5 = h5py.File(fn, 'r')
+    data =  np.asarray(f_h5['entry/instrument/detector/data'])
+    sum_data = np.mean(data, axis=0, dtype=np.float32)
+
+    out_fn = f'{fn[:-4]}.tiff'
+    io.imsave(out_fn, sum_data)
 
 
 # class Cam(AreaDetector):

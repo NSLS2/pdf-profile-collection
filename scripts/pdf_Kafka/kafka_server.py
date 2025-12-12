@@ -55,7 +55,13 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
         # )
 
         try:
-            start_process = ('sc_dk_field_uid' in message) or ('pilatus' in message['detectors'][0])
+            # start_process = ('sc_dk_field_uid' in message) or ('pilatus' in message['detectors'][0])
+            start_process = ('pe' in message['detectors'][0]) or ('pilatus' in message['detectors'][0])
+            
+            if 'dark' in message['sp_plan_name']:
+                print(f"\n***** This is a DARK scan skip process data. *****\n")
+                start_process = False
+        
         except KeyError:
             start_process = False
         
@@ -79,7 +85,7 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
             try:
                 print(f"\n{message['sc_dk_field_uid'] = }\n")
             except KeyError:
-                print(f"\nUsing pilatus, so there is no dark scan.\n")
+                print(f"\nNo dark uid found. Using detector {message['detectors'][0]}.\n")
 
 
             print(f'\n{img_analyzer.acq_mode() = }\n')
