@@ -139,9 +139,19 @@ class XPDFileStoreTIFFSquashing(FileStoreTIFFSquashing):
         return description
 
 
+
 class XPDTIFFPlugin(TIFFPlugin, XPDFileStoreTIFFSquashing,
                     FileStoreIterativeWrite):
-    pass
+
+    def update_paths(self):
+        directory_path_leaf = f"proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d/"
+        win_dir = directory_path_leaf.replace("/", "\\")
+        self.write_path_template = f"J:\\{win_dir}"
+        self.read_path_template = f"/nsls2/data/pdf/{directory_path_leaf}"
+
+    def stage(self):
+        self.update_paths()
+        super().stage() 
 
 
 class XPDHDF5Plugin(HDF5Plugin, FileStoreHDF5IterativeWrite):
@@ -156,11 +166,11 @@ class XPDPerkinElmer(PerkinElmerDetector):
 
     tiff = C(XPDTIFFPlugin, 'TIFF1:', #- MA
              #write_path_template='Z:/data/pe1_data/%Y/%m/%d', #- DO
-             write_path_template='J:\\%Y\\%m\\%d\\', #- DO
+             write_path_template=f"J:\\proposals\\{RE.md['cycle']}\\{RE.md['data_session']}\\assets\\%Y\\%m\\%d", #- DO
              #write_path_template='Z:/img/%Y/%m/%d/', #- MA
              #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
-             read_path_template='/nsls2/data/pdf/legacy/raw/pe1_data/%Y/%m/%d/', #- DO
-             root='/nsls2/data/pdf/legacy/raw/pe1_data/', #-DO
+             read_path_template=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/%Y/%m/%d",
+             root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/",
              #root='/SHARE/img/', #-MA
              cam_name='cam',  # used to configure "tiff squashing" #-MA
              proc_name='proc',  # ditto #-MA
@@ -196,62 +206,6 @@ class XPDPerkinElmer(PerkinElmerDetector):
         super().__init__(*args, **kwargs)
         self.stage_sigs.update([(self.cam.trigger_mode, 'Internal'),
                                ])
-
-class XPDPerkinElmer1(XPDPerkinElmer):
-    tiff = C(XPDTIFFPlugin, 'TIFF1:', #- MA
-             #write_path_template='Z:/data/pe1_data/%Y/%m/%d', #- DO
-             write_path_template='J:\\%Y\\%m\\%d\\', #- DO
-             #write_path_template='Z:/img/%Y/%m/%d/', #- MA
-             #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
-             read_path_template='/nsls2/data/pdf/legacy/raw/pe1_data/%Y/%m/%d/', #- DO
-             root='/nsls2/data/pdf/legacy/raw/pe1_data/', #-DO
-             #root='/SHARE/img/', #-MA
-             cam_name='cam',  # used to configure "tiff squashing" #-MA
-             proc_name='proc',  # ditto #-MA
-             read_attrs=[], #- MA
-    #tiff = C(XPDTIFFPlugin, 'TIFF1:',
-             #write_path_template='/home/xf28id1/Documents/Milinda/PE1Data',
-             #read_path_template='/SHARE/img/%Y/%m/%d/',
-             #root='/SHARE/img/',
-             #cam_name='cam',  # used to configure "tiff squashing"
-             #proc_name='proc',  # ditto
-             #read_attrs=[],
-
-             # TODO: switch to this configuration using GPFS later
-             # once G:\ drive is mounted to the Windows IOC
-             # (a new Windows 10 machine in the rack upstairs)
-             # write_path_template='G:\\img\\%Y\\%m\\%d\\',
-             # read_path_template='/nsls2/xf28id1/data/pe1_data/%Y/%m/%d/',
-             # root='/nsls2/xf28id1/data/pe1_data',
-             )
-
-class XPDPerkinElmer2(XPDPerkinElmer):
-    tiff = C(XPDTIFFPlugin, 'TIFF1:', #- MA
-             #write_path_template='Z:/data/pe2_data/%Y/%m/%d', #- DO
-             write_path_template='Y:\\legacy\\raw\\pe2_data\\%Y\\%m\\%d\\', #- DO
-             #write_path_template='Z:/img/%Y/%m/%d/', #- MA
-             #read_path_template='/SHARE/img/%Y/%m/%d/', #- MA
-             read_path_template='/nsls2/data/pdf/legacy/raw/pe2_data/%Y/%m/%d/', #- DO
-             root='/nsls2/data/pdf/legacy/raw/pe2_data/', #-DO
-             #root='/SHARE/img/', #-MA
-             cam_name='cam',  # used to configure "tiff squashing" #-MA
-             proc_name='proc',  # ditto #-MA
-             read_attrs=[], #- MA
-    #tiff = C(XPDTIFFPlugin, 'TIFF1:',
-             #write_path_template='/home/xf28id1/Documents/Milinda/PE1Data',
-             #read_path_template='/SHARE/img/%Y/%m/%d/',
-             #root='/SHARE/img/',
-             #cam_name='cam',  # used to configure "tiff squashing"
-             #proc_name='proc',  # ditto
-             #read_attrs=[],
-
-             # TODO: switch to this configuration using GPFS later
-             # once G:\ drive is mounted to the Windows IOC
-             # (a new Windows 10 machine in the rack upstairs)
-             # write_path_template='G:\\img\\%Y\\%m\\%d\\',
-             # read_path_template='/nsls2/xf28id1/data/pe2_data/%Y/%m/%d/',
-             # root='/nsls2/xf28id1/data/pe1_data',
-             )
 
 
 class ContinuousAcquisitionTrigger(BlueskyInterface):
@@ -334,49 +288,43 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
 
 
 
-class PerkinElmerContinuous1(ContinuousAcquisitionTrigger, XPDPerkinElmer1):
+class PerkinElmerContinuous(ContinuousAcquisitionTrigger, XPDPerkinElmer):
     pass
 
 
-class PerkinElmerStandard1(SingleTrigger, XPDPerkinElmer1):
+class PerkinElmerStandard(SingleTrigger, XPDPerkinElmer):
     pass
 
 
-class PerkinElmerMulti1(MultiTrigger, XPDPerkinElmer1):
-    shutter = C(EpicsSignal, 'XF:28IDC-ES:1{Sh:Exp}Cmd-Cmd')
-
-class PerkinElmerContinuous2(ContinuousAcquisitionTrigger, XPDPerkinElmer2):
-    pass
-
-
-class PerkinElmerStandard2(SingleTrigger, XPDPerkinElmer2):
-    pass
-
-
-class PerkinElmerMulti2(MultiTrigger, XPDPerkinElmer2):
+class PerkinElmerMulti(MultiTrigger, XPDPerkinElmer):
     shutter = C(EpicsSignal, 'XF:28IDC-ES:1{Sh:Exp}Cmd-Cmd')
 
 #temporary disable detector for testing -DO 11/25/19
-pe1 = PerkinElmerStandard1('XF:28ID1-ES{Det:PE1}', name='pe1', read_attrs=['tiff'])
+pe1 = PerkinElmerStandard('XF:28ID1-ES{Det:PE1}', name='pe1', read_attrs=['tiff'])
+pe1.tiff.update_paths()
 #################
 
 
 #pe1.stage_sigs.pop('cam.acquire')
 
 ################
-#Enabled for PE2 detector testing 11/25/19 - disabled for startup 8/22/2023 DO
-pe2 = PerkinElmerStandard2('XF:28ID1-ES{Det:PE2}', name='pe2', read_attrs=['tiff'])
+## Disabled for startup after netowrk update 2025/10/29 chl
+# pe2 = PerkinElmerStandard('XF:28ID1-ES{Det:PE2}', name='pe2', read_attrs=['tiff'])
+# pe2.tiff.update_paths()
 #################
 
 
 #temporary disable detector for PE2 testing -MA 11/25/19 and 12/09/21
-pe1c = PerkinElmerContinuous1('XF:28ID1-ES{Det:PE1}', name='pe1c',
+pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
                             read_attrs=['tiff', 'stats1.total'],
                              plugin_name='tiff')
-################ - disabled for startup 8/22/2023 DO
-pe2c = PerkinElmerContinuous2('XF:28ID1-ES{Det:PE2}', name='pe2c',
-                            read_attrs=['tiff', 'stats1.total'],
-                             plugin_name='tiff')
+pe1c.tiff.update_paths()
+################
+## Disabled for startup after netowrk update 2025/10/29 chl
+# pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',
+#                             read_attrs=['tiff', 'stats1.total'],
+#                              plugin_name='tiff')
+# pe2c.tiff.update_paths()
 
 ################
 #enabled by MA during PE2 SAXS - 01/2022 and 12/09/22
@@ -388,9 +336,10 @@ pe2c = PerkinElmerContinuous2('XF:28ID1-ES{Det:PE2}', name='pe2c',
 #temporary disable detector for testing -DO 7/11/19
 pe1c.detector_type.kind='config'
 pe1.detector_type.kind='config'
-################### - disabled for startup 8/22/2023 DO
-pe2c.detector_type.kind='config'
-pe2.detector_type.kind='config'
+###################
+## Disabled for startup after netowrk update 2025/10/29 chl
+# pe2c.detector_type.kind='config'
+# pe2.detector_type.kind='config'
 
 import time
 class CachedDetector:

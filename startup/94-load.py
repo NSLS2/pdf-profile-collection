@@ -27,6 +27,8 @@ if xpdacq_version < (1, 1, 0):
                                     ring_current, fb)
         pe1c = xpd_pe1c # alias
 
+    # ## Add by CHLin on 2025/08/19 for testing
+    # pe1c = pe2c
     configure_device(area_det=pe1c, shutter=fs,
                     temp_controller=eurotherm, #changed from None to eurotherm on 3/22/19 - DPO
                     db=db,
@@ -54,6 +56,7 @@ if xpdacq_version < (1, 1, 0):
 
     # instantiate xrun without beamtime, like bluesky setup
     xrun = CustomizedRunEngine(None)
+    xrun.md = RE.md
     xrun.md['beamline_id'] = glbl['beamline_id']
     xrun.md['group'] = glbl['group']
     xrun.md['facility'] = glbl['facility']
@@ -70,6 +73,11 @@ if xpdacq_version < (1, 1, 0):
 
     # insert header to db, either simulated or real
     xrun.subscribe(db.insert, 'all')
+
+    ## Added by CHL 2025/05/23
+    # We need to repeat it here for `xrun` as RE is not used here...
+    # return res added on 2025/08/12
+    res = nslsii.configure_kafka_publisher(xrun, "pdf")
 
     if bt:
         xrun.beamtime = bt
@@ -146,6 +154,8 @@ if os.environ.get('USE_MMM_RE', False):
     RE.beamtime = bt
     RE.clear_suspenders()
 
+## Added by CHL on 2025/0924 
+set_beamdump_suspender(RE)
 
 # Remove plans Qserver can't interpret
 if is_re_worker_active():

@@ -7,23 +7,88 @@ import matplotlib.pyplot as plt
 
 from bluesky.utils import ts_msg_hook
 from bluesky_queueserver import is_re_worker_active
+from bluesky.callbacks.tiled_writer import TiledWriter
+from tiled.client import from_profile
+import os
+from IPython import get_ipython
+from IPython.terminal.prompts import Prompts, Token
 
 from ophyd.signal import EpicsSignalBase
 # from Tom Caswell to fix the 'None bug' - whatever that is. DO 7/9/2021
 EpicsSignalBase.set_defaults(timeout=30, connection_timeout=30)
+
+class ProposalIDPrompt(Prompts):
+    def in_prompt_tokens(self, cli=None):
+        return [
+            (
+                Token.Prompt,
+                f"{RE.md.get('data_session', 'N/A')} [",
+            ),
+            (Token.PromptNum, str(self.shell.execution_count)),
+            (Token.Prompt, "]: "),
+        ]
+
+
+ip = get_ipython()
+ip.prompts = ProposalIDPrompt(ip)
+
+tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
+
+class TiledInserter:
+    name = 'pdf'
+    def insert(self, name, doc):
+        ATTEMPTS = 20
+        error = None
+        for attempt in range(ATTEMPTS):
+            try:
+                tiled_writing_client.post_document(name, doc)
+            except Exception as exc:
+                print("Document saving failure:", repr(exc))
+                error = exc
+            else:
+                break
+            time.sleep(2)
+        else:
+            # Out of attempts
+            raise error
+
+tiled_inserter = TiledInserter()
+
 
 # See docstring for nslsii.configure_base() for more details
 # this command takes away much of the boilerplate for settting up a profile
 # (such as setting up best effort callbacks etc)
 nslsii.configure_base(
     get_ipython().user_ns,
-    'pdf',
+    tiled_inserter,
     pbar=True,
     bec=True,
     magics=True,
     mpl=False,
-    publish_documents_with_kafka=True
-)
+    publish_documents_with_kafka=True,
+    redis_url="info.pdf.nsls2.bnl.gov"
+)   
+
+
+# Added by CHL on 2025/11/18 to remove items from RE.md since too much non-necessary info in redis
+from redis_json_dict import RedisJSONDict
+def remove_keys_redis(redis_dict: RedisJSONDict, prefix: str ='PDF:'):
+    # key_list = []
+    for key, value in redis_dict.items():
+        if prefix in key:
+            # key_list.append(key)
+            redis_dict.__delitem__(key)
+
+    return redis_dict
+
+RE.md = remove_keys_redis(RE.md, prefix='PDF:')
+
+
+# from redis_json_dict import RedisJSONDict
+# from redis import Redis
+
+# RE.md = RedisJSONDict(Redis(host="info.pdf.nsls2.bnl.gov", decode_responses=True), prefix="")
+
 # Remove plans that Qserver doesn't cope with
 if is_re_worker_active():
     del one_1d_step
@@ -35,47 +100,47 @@ from pathlib import Path
 import appdirs
 
 
-try:
-    from bluesky.utils import PersistentDict
-except ImportError:
-    import msgpack
-    import msgpack_numpy
-    import zict
+# try:
+#     from bluesky.utils import PersistentDict
+# except ImportError:
+#     import msgpack
+#     import msgpack_numpy
+#     import zict
 
-    class PersistentDict(zict.Func):
-        def __init__(self, directory):
-            self._directory = directory
-            self._file = zict.File(directory)
-            super().__init__(self._dump, self._load, self._file)
+#     class PersistentDict(zict.Func):
+#         def __init__(self, directory):
+#             self._directory = directory
+#             self._file = zict.File(directory)
+#             super().__init__(self._dump, self._load, self._file)
 
-        @property
-        def directory(self):
-            return self._directory
+#         @property
+#         def directory(self):
+#             return self._directory
 
-        def __repr__(self):
-            return f"<{self.__class__.__name__} {dict(self)!r}>"
+#         def __repr__(self):
+#             return f"<{self.__class__.__name__} {dict(self)!r}>"
 
-        @staticmethod
-        def _dump(obj):
-            "Encode as msgpack using numpy-aware encoder."
-            # See https://github.com/msgpack/msgpack-python#string-and-binary-type
-            # for more on use_bin_type.
-            return msgpack.packb(
-                obj,
-                default=msgpack_numpy.encode,
-                use_bin_type=True)
+#         @staticmethod
+#         def _dump(obj):
+#             "Encode as msgpack using numpy-aware encoder."
+#             # See https://github.com/msgpack/msgpack-python#string-and-binary-type
+#             # for more on use_bin_type.
+#             return msgpack.packb(
+#                 obj,
+#                 default=msgpack_numpy.encode,
+#                 use_bin_type=True)
 
-        @staticmethod
-        def _load(file):
-            return msgpack.unpackb(
-                file,
-                object_hook=msgpack_numpy.decode,
-                raw=False)
+#         @staticmethod
+#         def _load(file):
+#             return msgpack.unpackb(
+#                 file,
+#                 object_hook=msgpack_numpy.decode,
+#                 raw=False)
 
-runengine_metadata_dir = appdirs.user_data_dir(appname="bluesky") / Path("runengine-metadata")
+# runengine_metadata_dir = appdirs.user_data_dir(appname="bluesky") / Path("runengine-metadata")
 
 # PersistentDict will create the directory if it does not exist
-RE.md = PersistentDict(runengine_metadata_dir)
+#RE.md = PersistentDict(runengine_metadata_dir)
 
 # disable plotting for now
 # bec.disable_plots()
@@ -101,7 +166,7 @@ logger.setLevel('WARNING')
 RE.md['facility'] = 'NSLS-II'
 RE.md['group'] = 'PDF'
 RE.md['beamline_id'] = '28-ID-1'
-RE.md['cycle'] = '2018-1'
+# RE.md['cycle'] = '2018-1'
 
 def get_user_info():
     ''' This function prompts the user for basic info and
@@ -177,3 +242,5 @@ def print_all_pv_values():
 
         for key, val in ret.items():
             print("{:40s} \t {:20s} \t {}".format(key, time.ctime(val['timestamp']), val['value']))
+
+db = tiled_inserter
