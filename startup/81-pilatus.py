@@ -10,6 +10,8 @@ from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from collections import OrderedDict
 
+file_loading_timer.start()
+
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     def describe(self):
@@ -192,3 +194,6 @@ def set_Pilatus_parameters(num_images=1, exposure_time=0.1):
     print ('setting exposure time for a single image to '+str(exposure_time))
     pilatus1.set_exposure_time(exposure_time)
     tqdm_sleep(1)
+
+
+file_loading_timer.stop()

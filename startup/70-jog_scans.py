@@ -4,6 +4,8 @@ from bluesky.utils import short_uid
 import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
 
+file_loading_timer.start()
+
 
 def future_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
     """
@@ -117,7 +119,7 @@ def jog(dets, exposure_s, motor, start, stop, md=None):
 
 
 
-
+file_loading_timer.stop()
 
 
 

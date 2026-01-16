@@ -10,6 +10,7 @@ from bluesky.utils import short_uid
 import bluesky_darkframes
 from ophyd import Signal
 
+file_loading_timer.start()
 
 # vendored, simplified, and made public from bluesky_darkframes
 class SnapshotShell:
@@ -259,3 +260,5 @@ def dark_plan(detector, shell, *, stream_name="dark"):
     # Restage.
     yield from bps.unstage(detector)
     yield from bps.stage(detector)
+
+file_loading_timer.stop()

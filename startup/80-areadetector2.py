@@ -14,6 +14,8 @@ from ophyd import StatusBase
 
 from nslsii.ad33 import StatsPluginV33
 
+file_loading_timer.start()
+
 # from shutter import sh1
 
 #shctl1 = EpicsSignal('XF:28IDC-ES:1{Det:PE1}cam1:ShutterMode', name='shctl1')
@@ -399,3 +401,4 @@ class CachedDetector:
 # some defaults, as an example of how to use this
 # pe1.configure(dict(images_per_set=6, number_of_sets=10))
 
+file_loading_timer.stop()

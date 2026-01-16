@@ -1,3 +1,5 @@
+file_loading_timer.start()
+
 from confluent_kafka import Producer
 from nslsii.kafka_utils import _read_bluesky_kafka_config_file
 import msgpack
@@ -445,3 +447,5 @@ def agent_set_glbl_val(key: str, val: float):
     """
     glbl[key] = val
     yield from bps.null()
+
+file_loading_timer.stop()

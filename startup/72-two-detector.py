@@ -10,6 +10,8 @@ import numpy as np
 from bluesky.utils import Msg
 from ophyd import Device, Signal
 
+file_loading_timer.start()
+
 Plan = T.Generator[Msg, T.Any, T.Any]
 Motor = T.Union[Device, Signal]
 Number = T.Union[float, int]
@@ -170,3 +172,5 @@ class TwoDetectors:
             for start, stop, num in zip(starts, stops, nums)
         ]
         return self._outer_scan(detectors, motors, positions)
+
+file_loading_timer.stop()

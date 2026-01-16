@@ -1,3 +1,4 @@
+file_loading_timer.start()
 import sys
 #from slack import WebClient
 #from slack.errors import SlackApiError
@@ -938,3 +939,4 @@ def show_me_db2(
     #if all else fails, plot!
     show_me2(my_im, count_low=count_low, count_high=count_high, use_colorbar=use_colorbar, use_cmap=use_cmap)
 
+file_loading_timer.stop()

@@ -2,7 +2,7 @@
 import logging
 import matplotlib.pyplot
 import nslsii
-import time
+import time as ttime
 import matplotlib.pyplot as plt
 
 from bluesky.utils import ts_msg_hook
@@ -14,8 +14,25 @@ from IPython import get_ipython
 from IPython.terminal.prompts import Prompts, Token
 
 from ophyd.signal import EpicsSignalBase
+
+
+class FileLoadingTimer():
+    def __init__(self):
+        self.start()
+
+    def start(self):
+        print(f"Loading {__file__}")
+        self.current_time = ttime.time()
+
+    def stop(self):
+        print(f"Done loading {__file__} in {ttime.time() - self.current_time} seconds")
+
+file_loading_timer = FileLoadingTimer()
+
 # from Tom Caswell to fix the 'None bug' - whatever that is. DO 7/9/2021
 EpicsSignalBase.set_defaults(timeout=30, connection_timeout=30)
+
+
 
 class ProposalIDPrompt(Prompts):
     def in_prompt_tokens(self, cli=None):
@@ -244,3 +261,5 @@ def print_all_pv_values():
             print("{:40s} \t {:20s} \t {}".format(key, time.ctime(val['timestamp']), val['value']))
 
 db = tiled_inserter
+
+file_loading_timer.stop()

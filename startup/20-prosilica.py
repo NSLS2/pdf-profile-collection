@@ -17,6 +17,7 @@ from pathlib import PurePath
 from bluesky.plan_stubs import stage, unstage, open_run, close_run, trigger_and_read, pause
 from collections import OrderedDict
 
+file_loading_timer.start()
 
 class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
     """Add this as a component to detectors that write TIFFs."""
@@ -85,3 +86,5 @@ for camera in [Test_Cam1, Cam2]:
     camera.read_attrs.append('tiff')
     camera.tiff.read_attrs = []
 '''
+
+file_loading_timer.stop()

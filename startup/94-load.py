@@ -1,3 +1,5 @@
+file_loading_timer.start()
+
 """XpdAcq Initializatoion
 >>>>>>> MNT: use new 94-load.py
 
@@ -121,7 +123,8 @@ else:
     # Do all setup in the constructor of UserInterface
     # HOME directory will be changed to the one in glbl
     ui = UserInterface(
-        area_dets=[pe1c, pe2c, pilatus1],
+        area_dets=[pe1c],
+        # area_dets=[pe1c, pe2c, pilatus1],
         det_zs=[Det_1_Z.user_setpoint, Det_2_Z.user_setpoint],
         shutter=fs,
         temp_controller=eurotherm,
@@ -164,3 +167,4 @@ set_beamdump_suspender(RE)
 if is_re_worker_active():
     del Tramp
     del Tlist
+file_loading_timer.stop()

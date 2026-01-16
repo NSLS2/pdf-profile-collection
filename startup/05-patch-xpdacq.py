@@ -4,6 +4,8 @@ import xpdacq.xpdacq
 import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
 
+file_loading_timer.start()
+
 
 def no_dark(plan):
     def plan_with_shutter():
@@ -101,3 +103,5 @@ def _stateful_configure_ad(exposure: float):
 
 
 xpdacq.beamtime._configure_area_det = _stateful_configure_ad
+
+file_loading_timer.stop()

@@ -16,11 +16,9 @@ nslsii = "==0.11.4"
 numpy = "*"
 ophyd = ">=1.11.0"
 pyepics = "*"
-python = ">=3.12,<3.13"
+python = ">=3.13,<3.14"
 semver = ">=3.0.4,<4"
-tiled-client = ">=0.1.6"
 bluesky-darkframes = ">=0.6.0,<0.7"
-xpdacq = ">=1.1.4,<2"
 xpdan = ">=0.8.2,<0.9"
 lmfit = ">=1.3.4,<2"
 databroker = "==2.0.0"
@@ -31,11 +29,12 @@ hdf5-external-filter-plugins = ">=0.1.0,<0.2"
 blosc-hdf5-plugin = ">=1.0.1,<2"
 epicscorelibs = ">=7.0.7.99.1.1,<8"
 ophyd-async = ">=0.13.7,<0.14"
-
+tiled-client = ">=0.2.3,<0.3"
+xpdacq = "==1.0.0"
 
 [feature.profile.pypi-dependencies]
 pvxslibs = ">=1.3.2, <2"
-
+diffpy-pdfgetx = { path = "/opt/diffpy.pdfgetx-2.4.0/wheels/diffpy_pdfgetx-2.4.0-cp313-cp313-linux_x86_64.whl" }
 
 [feature.qs.dependencies]
 bluesky-queueserver = "*"

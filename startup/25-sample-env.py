@@ -1,4 +1,5 @@
 
+file_loading_timer.start()
 
 class SampleEnvironment(Device):
     esc_sample_theta = Cpt(EpicsMotor, 'ECS-Ax:Th1}Mtr')
@@ -21,3 +22,4 @@ class Analyzer(Device):
 
 analyzer_goniohead = Analyzer('XF:28ID1B-ES{Spn:Anlzr-Ax:', name='analyzer_goniohead')
 
+file_loading_timer.stop()

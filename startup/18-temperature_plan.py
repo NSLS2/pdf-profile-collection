@@ -1,5 +1,7 @@
 ## Added by CHL on 2025/09/17
 
+file_loading_timer.start()
+
 import bluesky.plan_stubs as bps
 
 
@@ -70,3 +72,5 @@ def pbar_set_temp(temp_controller = eurotherm3504, ramprate = 5, setpoint = 25, 
     status = temperature_pbar(start_T, temp_controller.setpoint.get(), T_from_sensor, tolerance, status)
         
     return status
+
+file_loading_timer.stop()

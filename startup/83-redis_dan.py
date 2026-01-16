@@ -1,5 +1,6 @@
 import redis, ast, json
 
+file_loading_timer.start()
 
 redis_host = 'info.pdf.nsls2.bnl.gov'
 
@@ -253,3 +254,5 @@ def retrieve_beamtime_info():
 
 #def retrieve_xrd_sample_number():
 #    return int(rkvs.get('PDF:xpdacq:xrd_sample_number').decode('utf-8'))
+
+file_loading_timer.stop()

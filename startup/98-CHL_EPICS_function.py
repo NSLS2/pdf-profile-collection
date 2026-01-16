@@ -1,3 +1,5 @@
+file_loading_timer.start()
+
 import ophyd
 from ophyd import (Device, Component as Cpt,
                    EpicsSignal, EpicsSignalRO, EpicsMotor)
@@ -1778,3 +1780,4 @@ def _identify_peaks_scan_shifter_pos_ask(
 # loc://DID_56hpy
 # loc://DID_56vpx
 # loc://DID_56vpy
+file_loading_timer.stop()
