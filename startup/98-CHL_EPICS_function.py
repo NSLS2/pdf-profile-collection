@@ -918,16 +918,24 @@ def pd_counts(dets, exposure, sample_name='test', md=None):
 
 import h5py
 from skimage import io
-def nxs_to_tiff(fn:str, key:str=None):
+def nxs_to_tiff(fn:str, key:str=None, return_sum:bool=False):
     if key is None:
         key = 'entry/instrument/detector/data'
     
     f_h5 = h5py.File(fn, 'r')
-    data =  np.asarray(f_h5['entry/instrument/detector/data'])
-    sum_data = np.mean(data, axis=0, dtype=np.float32)
+    data =  np.asarray(f_h5['entry/instrument/detector/data'], dtype=np.float32)
 
-    out_fn = f'{fn[:-4]}.tiff'
-    io.imsave(out_fn, sum_data)
+    if return_sum:
+        data = np.mean(data, axis=0, dtype=np.float32)
+        out_fn = f'{fn[:-4]}.tiff'
+        io.imsave(out_fn, data)
+    else:
+        for i in range(data.shape[0]):
+            out_fn = f'{fn[:-4]}_{i:02d}.tiff'
+            io.imsave(out_fn, data[i])
+
+    return data            
+
 
 
 # class Cam(AreaDetector):
@@ -1332,6 +1340,7 @@ def scan_shifter_pos_ask(
     peak_rad=1.5,
     use_det=True,
     abs_data = False,
+    flip_data = False, 
     oset_data = 0.0,
     return_to_start = True,
     recover_last_scan = False, 
@@ -1410,6 +1419,9 @@ def scan_shifter_pos_ask(
 
     if abs_data:
         I_list = abs(I_list)
+
+    if flip_data:
+        I_list = -(I_list)
 
     print("")
     # add need_interaction by CHLin on 2025/07/07
