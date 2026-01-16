@@ -15,6 +15,9 @@ import xpdacq
 
 xpdacq_version = tuple(map(int, xpdacq.__version__.split(".")))
 
+# from ophyd.sim import det
+# pe1c = det
+
 if xpdacq_version < (1, 1, 0):
     import os
     from xpdacq.xpdacq_conf import (glbl_dict, configure_device,

@@ -395,6 +395,7 @@ def scan_shifter_pos(
     peak_rad=1.5,
     use_det=True,
     abs_data = False,
+    flip_data = False, 
     oset_data = 0.0,
     return_to_start = True,
     recover_last_scan = False
@@ -454,6 +455,10 @@ def scan_shifter_pos(
         I_list = I_list - oset_data
 
     if abs_data:
+        I_list = abs(I_list)
+
+    # added by CHL on 2025/12/12
+    if flip_data:
         I_list = abs(I_list)
 
     print("")
