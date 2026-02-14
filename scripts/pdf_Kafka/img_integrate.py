@@ -89,7 +89,7 @@ class img_integrate(imgData_2D.imgData_2D):
             n_folder = self.pe1c_PDF
 
         elif self.acq_mode() == 'XRD':
-            n_folder = self.pilatus_XRD
+            n_folder = self.pe1c_XRD
         
         else:
             n_folder = self.pe1c_PDF
@@ -131,11 +131,11 @@ class img_integrate(imgData_2D.imgData_2D):
             return self.merged_poin
             
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return self.poni_pe1c
             
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return self.poni_pe2c
 
         else:
@@ -148,11 +148,11 @@ class img_integrate(imgData_2D.imgData_2D):
             return np.load(self.stitched_mask)
             
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return np.load(self.mask_pe1c)
             
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return np.load(self.mask_pe2c)
 
         else:
@@ -198,14 +198,14 @@ class img_integrate(imgData_2D.imgData_2D):
         ## q1d.shape is (self.npt_rad, )
         i2d, q1d, chi1d = self.ai.integrate2d(self.process_img, self.npt_rad, 
                                          unit=self.UNIT, npt_azim=self.npt_azim, 
-                                         polarization_factor=self.polarization, 
-                                         mask=self.mask_array) 
+                                         polarization_factor=self.polarization, )
+                                        #  mask=self.mask_array) 
         
         ## trasnform self.mask_array (base mask) to the same coordinate space and cast it as type bool
         intrinsic_mask_unrolled, _, _ = self.ai.integrate2d(self.mask_array, self.npt_rad, 
                                                        unit=self.UNIT, npt_azim=self.npt_azim, 
-                                                       polarization_factor=self.polarization, 
-                                                       mask=self.mask_array)
+                                                       polarization_factor=self.polarization, )
+                                                    #    mask=self.mask_array)
         #intrinsic_mask_unrolled = intrinsic_mask_unrolled.astype(bool) 
         
         ## Create an array to hold outlier mask
@@ -246,13 +246,13 @@ class img_integrate(imgData_2D.imgData_2D):
         if 'pilatus' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.iq')
 
-        elif 'pe1c' in self.detector:
-            if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+        elif 'pe1' in self.detector:
+            if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
                 iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.iq')
             else:
                 iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_SAXS.iq')
 
         else:

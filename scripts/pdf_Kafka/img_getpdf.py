@@ -59,6 +59,7 @@ class img_getpdf(img_integrate.img_integrate):
             'rmax':             self.getfloat('pdfgetx3', 'rmax', fallback=100.0), 
             'rstep':            self.getfloat('pdfgetx3', 'rstep', fallback=0.1), 
             'composition':      self.run.start['composition_string'], 
+            'temperature_K':    self.temperature, 
             }
 
     
@@ -93,8 +94,8 @@ class img_getpdf(img_integrate.img_integrate):
         if 'pilatus' in self.detector:
             sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sum', pdfgetter)
 
-        elif 'pe1c' in self.detector:
-            if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+        elif 'pe1' in self.detector:
+            if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
                 sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_flat', pdfgetter)
             else:
                 sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sub', pdfgetter)

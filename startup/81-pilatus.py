@@ -41,6 +41,16 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
             ret[key].setdefault("dtype_str", type_map[cam_dtype])
 
         return ret
+    
+    def update_paths(self):
+        base_path = f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/{self.parent.name}/%Y/%m/%d"
+        self.write_path_template = base_path
+        self.read_path_template = base_path
+
+    def stage(self):
+        self.update_paths()
+        super().stage()
+
 
 class PilatusDetectorCamV33(PilatusDetectorCam):
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
@@ -72,11 +82,12 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
     #roi3 = Cpt(ROIPlugin, 'ROI3:')
     #roi4 = Cpt(ROIPlugin, 'ROI4:')
     #proc1 = Cpt(ProcessPlugin, 'Proc1:')
-
+    
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
-               write_path_template='/nsls2/data/pdf/legacy/raw/pilatus1_data/%Y/%m/%d/',
-               root='/nsls2/data/pdf/legacy/raw')
+               write_path_template='',
+               root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets", )
+               ## CHL changed root on 2025/09/18 in order to be consistent with base path
     
     def set_exposure_time(self, exposure_time, verbosity=3):
         yield from bps.mv(self.cam.acquire_time, exposure_time, self.cam.acquire_period, exposure_time+.1)
@@ -88,10 +99,10 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         # self.cam.num_images = num_images
 
 
-pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus1')
+pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
 # pilatus1.tiff.read_attrs = []
 pilatus1.tiff.kind = 'normal'
-
+pilatus1.tiff.update_paths()
 
 
 
@@ -147,6 +158,14 @@ def show_me_db2(
     show_me2(my_im, count_low=count_low, count_high=count_high, use_colorbar=use_colorbar, use_cmap=use_cmap)
 
 
+## Added by CHL 2025/09/19
+def tqdm_sleep(rest_time, message='Sleep'):
+    from tqdm import tqdm
+    for j in tqdm(range(0,100), desc=message):
+        time.sleep(rest_time/100)
+
+
+
 ####### convinence functions by Dan - 1/24/2023 ############
 def set_Pilatus_energy_for_threshold(energy = 74.0):
     """ Default to energy = 74 (in keV), but can pass something else if you want """
@@ -154,22 +173,22 @@ def set_Pilatus_energy_for_threshold(energy = 74.0):
     caput('XF:28ID1-ES{Det:Pilatus}cam1:Energy', energy)
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ThresholdEnergy', energy/2)
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ThresholdApply', 1)
-    time.sleep(8)
+    tqdm_sleep(8)
 
 def reset_Pilatus_Power(delay=15.0):
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ResetPowerTime', delay)
     t0=time.time()
     print ('performing Pilatus module power reset, please wait '+str(delay)+' seconds')
     caput('XF:28ID1-ES{Det:Pilatus}cam1:ResetPower', 1)
-    time.sleep(delay)
+    tqdm_sleep(delay)
     print ('sleep time done, now waiting a bit more')
-    time.sleep(8)
+    tqdm_sleep(8)
     print ('coming back online, need another 20 seconds')
-    time.sleep(20)
+    tqdm_sleep(20)
 
 def set_Pilatus_parameters(num_images=1, exposure_time=0.1):
     print ('setting number of images per collection to '+str(num_images))
     pilatus1.set_num_images(num_images)
     print ('setting exposure time for a single image to '+str(exposure_time))
     pilatus1.set_exposure_time(exposure_time)
-    time.sleep(1)
+    tqdm_sleep(1)

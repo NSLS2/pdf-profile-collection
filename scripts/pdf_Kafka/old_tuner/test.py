@@ -1,8 +1,7 @@
 import importlib
 # color_tuner = importlib.import_module("color_tuner").color_tuner
 histogram_tuner = importlib.import_module("subplot_tuner").histogram_tuner
-ThreeSub_tuner = importlib.import_module("subplot_tuner").ThreeSub_tuner
-TwoSub_tuner = importlib.import_module("subplot_tuner").TwoSub_tuner
+data_tuner = importlib.import_module("subplot_tuner").data_tuner
 # pct_integration = importlib.import_module("kafka_uti").pct_integration
 bin_ndarray = importlib.import_module("kafka_uti").bin_ndarray
 
@@ -61,7 +60,7 @@ def pct_integration(img_array, iq_fn, save=True):
         iq_saver(iq_fn, iq_df, md)
         print(f'\n*** {os.path.basename(iq_fn)} saved!! ***\n')
 
-    return iq_df, i2d, outlier_mask_2d_masked
+    return iq_df0, i2d, outlier_mask_2d_masked
 
 
 npt_rad = 4096
@@ -88,38 +87,23 @@ mask_fn = os.path.join(config_dir, 'pe1c_XRD_chl', 'Mask2.npy')
 ai = pyFAI.load(poni_fn)
 mask0 = np.load(mask_fn)
 
-masked_img = ma.masked_array(img, mask=mask0)
-mask_img_m = masked_img.filled(fill_value=np.nan)
-mask_img_bb = bin_ndarray(mask_img_m)
-
-iq_df, i2d, outlier_mask_2d_masked = pct_integration(img, 'xx', save=False)
+iq_df0, i2d, outlier_mask_2d_masked = pct_integration(img, 'xx', save=False)
 i2d_m = outlier_mask_2d_masked.filled(fill_value=np.nan)
 bb = bin_ndarray(i2d_m)
 sep=';'
 
-# fig0 = plt.figure(figsize=(12, 6))
-# # img_tuner0 = subplot_tuner(fig, bb, histogram=True, aspect=None)
-# img_tuner0 = histogram_tuner(fig0, bb, histogram=True, aspect='auto')
-# img_tuner0()
+fig0 = plt.figure(figsize=(12, 6))
+# img_tuner0 = subplot_tuner(fig, bb, histogram=True, aspect=None)
+img_tuner0 = histogram_tuner(fig0, bb, histogram=True, aspect='auto')
+img_tuner0()
 
-
-# fig2 = plt.figure(figsize=(12, 6))
-# img_tuner2 = TwoSub_tuner(fig2, img, aspect=None, data=iq_df, poni_fn=poni_fn, pyfai_split=False)
-# img_tuner2()
-
-
-# fig3 = plt.figure(figsize=(12, 6))
-# img_tuner3 = TwoSub_tuner(fig3, bb, aspect='auto', data=iq_df, poni_fn=poni_fn, pyfai_split=True)
-# img_tuner3()
-
-
-fig1 = plt.figure(figsize=(10, 10))
-img_tuner1 = ThreeSub_tuner(fig1, mask_img_m, unrolled_array=bb, aspect=None, data=iq_df, poni_fn=poni_fn)
+fig1 = plt.figure(figsize=(12, 6))
+img_tuner1 = data_tuner(fig1, img, aspect=None, data=iq_df0, poni_fn=poni_fn)
 img_tuner1()
 
-# fig2 = plt.figure(figsize=(12, 6))
-# img_tuner2 = data_tuner(fig2, bb, aspect='auto', data=iq_df, poni_fn=poni_fn, pyfai_split=True)
-# img_tuner2()
+fig2 = plt.figure(figsize=(12, 6))
+img_tuner2 = data_tuner(fig2, bb, aspect='auto', data=iq_df0, poni_fn=poni_fn, pyfai_split=True)
+img_tuner2()
 
 # fig3 = plt.figure(figsize=(12, 6))
 # img_tuner3 = data_tuner(fig3, bb, aspect='auto', pyfai_split=True)

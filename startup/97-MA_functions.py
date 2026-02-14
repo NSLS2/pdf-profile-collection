@@ -2,8 +2,8 @@ import shutil
 config_dir = "/nsls2/data/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/"
 "Define Beamline Modes"
 
-def change_energy(option=None):   
-    file_path = "~/Documents/MA/Look_up_table.xlsx"
+def change_energy(option=None, file_path="~/Documents/MA/Look_up_table.xlsx"):   
+    # file_path = file_path
     df = pd.read_excel(file_path)
     Ophyd_object_setpoint = []
     
@@ -102,7 +102,7 @@ def turbo():
 #    I0 = caget("SR:OPS-BI{DCCT:1}I:Real-I")
 
 #---------------------------function to display the dark subtracted last image ----------------------------------
-from tifffile import imread, imshow, imsave
+from tifffile import imread, imshow, imwrite
 def lastimage(n):
     hdr=db[-n]
     for doc in hdr.documents(fill=True):
@@ -121,9 +121,9 @@ def lastimage(n):
 
     I = light_img - dk_img
     imshow(I, vmax = (I.sum()/(2048*2048)), cmap = 'jet' )
-    imsave("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "dark_sub_image" + ".tiff", light_img - dk_img)
-    imsave("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "dark_image" + ".tiff", dk_img)
-    imsave("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "light_image" + ".tiff", light_img)
+    imwrite("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "dark_sub_image" + ".tiff", light_img - dk_img)
+    imwrite("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "dark_image" + ".tiff", dk_img)
+    imwrite("/nsls2/data/pdf/legacy/processed/xpdacq_data/MA_01_27_2023/" + "light_image" + ".tiff", light_img)
     
 
 #---------------------------------HAB T setpoint threshold--------------------------------------------

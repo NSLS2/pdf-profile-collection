@@ -72,10 +72,15 @@ class PDFFastShutter(Device):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.st = None
-        # TODO: ask CJ to change it downstream to only accept the 'Open' or 'Close' strings (no numbers please!).
-        self.setmap = {'Open': 0, 'Close': 1,
-                       1: 0, 0: 1}  # MR: this is an inversed logic on the xpdacq side
-        self.readmap = {0: 'Open', 1: 'Close'}
+        # # TODO: ask CJ to change it downstream to only accept the 'Open' or 'Close' strings (no numbers please!).
+        # self.setmap = {'Open': 0, 'Close': 1,
+        #                1: 0, 0: 1}  # MR: this is an inversed logic on the xpdacq side
+        # self.readmap = {0: 'Open', 1: 'Close'}
+
+        ## Found open/close defined reversly after data security on 2025/09/12 by CHLin
+        self.setmap = {'Open': 1, 'Close': 0,
+                       1: 1, 0: 0}  # MR: this is an inversed logic on the xpdacq side
+        self.readmap = {1: 'Open', 0: 'Close'}
 
     def set(self, val):
         # NOTE: temporary workaround until the fast shutter works.

@@ -56,6 +56,7 @@ if xpdacq_version < (1, 1, 0):
 
     # instantiate xrun without beamtime, like bluesky setup
     xrun = CustomizedRunEngine(None)
+    xrun.md = RE.md
     xrun.md['beamline_id'] = glbl['beamline_id']
     xrun.md['group'] = glbl['group']
     xrun.md['facility'] = glbl['facility']
@@ -153,6 +154,8 @@ if os.environ.get('USE_MMM_RE', False):
     RE.beamtime = bt
     RE.clear_suspenders()
 
+## Added by CHL on 2025/0924 
+set_beamdump_suspender(RE)
 
 # Remove plans Qserver can't interpret
 if is_re_worker_active():

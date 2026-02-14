@@ -14,7 +14,7 @@ class kafka_log():
 
     def __init__(self):
         self.color_str = ''
-
+        self.do_process = False
 
 
 def azim_to_q(theta, wavelength):

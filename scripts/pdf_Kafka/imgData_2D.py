@@ -56,6 +56,11 @@ class imgData_2D(imgData_config):
     @property
     def detector(self):
         return self.run.start['detectors'][0]
+    
+
+    @property
+    def img_key(self):
+        return f'{self.detector}_image'
 
 
     @property
@@ -141,7 +146,7 @@ class imgData_2D(imgData_config):
     def temperature(self):
         try:
             # temp_controller = self.get('TEMPERATURE', 'temp_controller', fallback='No_temp_controller')
-            T = self.run.start['more_info'][self.T_controller]
+            T = float(self.run.start['more_info'][self.T_controller])
 
         except (KeyError, IndexError, TypeError):
             T = 'None'
@@ -159,7 +164,7 @@ class imgData_2D(imgData_config):
         T = self.temperature
 
         if type(T) is float:
-            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T}_K'
+            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_K'
 
         else:
             return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}'
@@ -175,10 +180,10 @@ class imgData_2D(imgData_config):
         if 'pilatus' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
-        elif 'pe1c' in self.detector:
+        elif 'pe1' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
-        elif 'pe2c' in self.detector:
+        elif 'pe2' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
         else:
@@ -215,9 +220,9 @@ class imgData_2D(imgData_config):
         """ Assuming im2 offset by -osetx, -osety, and im3 offset by +osetx, +osety """
         
         # run = tiled_client[uid]
-        my_im3 = getattr(self.run, self.stream_name[0]).read()['pilatus1_image'].to_numpy()[0][0]
-        my_im2 = getattr(self.run, self.stream_name[1]).read()['pilatus1_image'].to_numpy()[0][0]
-        my_im1 = getattr(self.run, self.stream_name[2]).read()['pilatus1_image'].to_numpy()[0][0]
+        my_im3 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+        my_im2 = np.float32(getattr(self.run, self.stream_name[1]).read()[self.img_key].to_numpy()[0][0])
+        my_im1 = np.float32(getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0])
 
         if self.use_flat_field_pila:
             flat_field = tifffile.imread(self.flat_field_pila)
@@ -245,13 +250,13 @@ class imgData_2D(imgData_config):
         my_imsum = np.ones((my_im1.shape[0]+int(2*self.osetx), my_im2.shape[1]+int(2*self.osety),3))*np.nan
 
         my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im1
-        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_1==1] = np.nan
+        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_3==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
 
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1] = my_im2
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1][use_mask_2==1] = np.nan
 
         my_imsum[int(2*self.osetx):,int(2*self.osety):,2] = my_im3
-        my_imsum[int(2*self.osetx):,int(2*self.osety):,2][use_mask_3==1] = np.nan
+        my_imsum[int(2*self.osetx):,int(2*self.osety):,2][use_mask_1==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
         
         return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
@@ -270,14 +275,37 @@ class imgData_2D(imgData_config):
         return self.process_img
     
 
+
+    def sub_dk_img(self):
+
+        raw_img = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+
+        try:
+            dk_uid = self.run.start['sc_dk_field_uid']
+            dk_run = self.tiled_client[dk_uid]
+            dk_img = np.float32(getattr(dk_run, 'primary').read()[self.img_key].to_numpy()[0][0])
+            # dk_img = 0.0
+
+            sub_img = raw_img-dk_img
+
+        except KeyError:
+            sub_img = raw_img
+            print('\n******* No dark uid found. Export image without dark subtraction. *******\n')
+
+        return sub_img
+
+
     def save_img_perkin(self):
 
-        self.process_img = self.sandbox_tiled[self.dksub_uid].read()
+        # self.process_img = self.sandbox_tiled[self.dksub_uid].read()
         
+        ## After data security, data transfer of pdfstream is done by 0MQ not Kafka 
+        self.process_img = self.sub_dk_img()
+
         if self.use_flat_field_pe1c or self.use_flat_field_pe2c:
-            if 'pe1c' in self.detector:
+            if 'pe1' in self.detector:
                 flat_field = tifffile.imread(self.flat_field_pe1c)
-            elif 'pe2c' in self.detector:
+            elif 'pe2' in self.detector:
                 flat_field = tifffile.imread(self.flat_field_pe2c)
             else:
                 flat_field = tifffile.imread(self.flat_field_pe1c)
@@ -286,10 +314,10 @@ class imgData_2D(imgData_config):
 
         os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
         
-        if (self.use_flat_field_pe1c) and ('pe1c' in self.detector):
+        if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
             tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
         
-        elif (self.use_flat_field_pe2c) and ('pe2c' in self.detector):
+        elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
             tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:
@@ -300,4 +328,41 @@ class imgData_2D(imgData_config):
 
         return self.process_img
 
+
+
+    def save_single_pilatus(self):
+
+        self.process_img = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+
+
+        # # self.process_img = self.sandbox_tiled[self.dksub_uid].read()
+        
+        # ## After data security, data transfer of pdfstream is done by 0MQ not Kafka 
+        # self.process_img = self.sub_dk_img()
+
+        if self.use_flat_field_pe1c or self.use_flat_field_pe2c:
+            if 'pe1' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+            elif 'pe2' in self.detector:
+                flat_field = tifffile.imread(self.flat_field_pe2c)
+            else:
+                flat_field = tifffile.imread(self.flat_field_pe1c)
+
+            self.process_img = self.process_img / flat_field
+
+        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        
+        if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+        
+        elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+        
+        else:
+            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+        
+        tifffile.imsave(tiff_fn, self.process_img)
+        print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
+
+        return self.process_img
         

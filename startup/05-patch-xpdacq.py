@@ -74,9 +74,15 @@ def _configure_PE(det, exposure: float):
 
     _check_mini_expo(exposure, acq_time)
 
-    num_frame = np.ceil(exposure / acq_time)
+    # num_frame = np.ceil(exposure / acq_time)
+    # yield from bps.mov(det.images_per_set, num_frame)
+    # computed_exposure = num_frame * acq_time
+
+    ## Updated by CHL on 2025/11/01
+    num_frame = float(np.ceil(exposure / acq_time))
     yield from bps.mov(det.images_per_set, num_frame)
-    computed_exposure = num_frame * acq_time
+    computed_exposure = float(num_frame * acq_time)
+
 
     # print exposure time
     print(
@@ -94,4 +100,4 @@ def _stateful_configure_ad(exposure: float):
     )
 
 
-# xpdacq.beamtime._configure_area_det = _stateful_configure_ad
+xpdacq.beamtime._configure_area_det = _stateful_configure_ad

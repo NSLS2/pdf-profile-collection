@@ -8,7 +8,7 @@ import skimage
 import bluesky.preprocessors as bpp
 import bluesky.plan_stubs as bps
 from bluesky.plans import count
-from xpdacq.beamtime import _configure_area_det
+from xpdacq.beamtime import _configure_area_det, close_shutter_stub, open_shutter_stub
 from bluesky.utils import short_uid, MsgGenerator, plan
 
 import datetime
@@ -68,6 +68,8 @@ def measurement_data(): # .......Captures metadata
     info_dict = {}
     info_dict['OT_stage_1_X'] = OT_stage_1_X.read()
     info_dict['OT_stage_1_Y'] = OT_stage_1_Y.read()
+    info_dict['OT_stage_2_X'] = OT_stage_2_X.read()
+    info_dict['OT_stage_2_Y'] = OT_stage_2_Y.read()
     info_dict['Det_1_X'] = Det_1_X.read()
     info_dict['Det_1_Y'] = Det_1_Y.read()
     info_dict['Det_1_Z'] = Det_1_Z.read()
@@ -78,19 +80,19 @@ def measurement_data(): # .......Captures metadata
     info_dict['frame_acq_time'] = glbl['frame_acq_time']
     info_dict['dk_window'] = glbl['dk_window']
     
-    info_dict['cryostat_A'] = lakeshore336.read()['lakeshore336_temp_A_T']['value']
-    info_dict['cryostat_A_V'] = caget('XF:28ID1-ES{LS336:1-Chan:A}Val:Sens-I')
-    info_dict['cryostat_B'] = lakeshore336.read()['lakeshore336_temp_B_T']['value']
-    info_dict['cryostat_B_V'] = caget('XF:28ID1-ES{LS336:1-Chan:B}Val:Sens-I')
-    info_dict['cryostat_C'] = lakeshore336.read()['lakeshore336_temp_C_T']['value']
-    info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
-    info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
-    info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
+    # info_dict['cryostat_A'] = lakeshore336.read()['lakeshore336_temp_A_T']['value']
+    # info_dict['cryostat_A_V'] = caget('XF:28ID1-ES{LS336:1-Chan:A}Val:Sens-I')
+    # info_dict['cryostat_B'] = lakeshore336.read()['lakeshore336_temp_B_T']['value']
+    # info_dict['cryostat_B_V'] = caget('XF:28ID1-ES{LS336:1-Chan:B}Val:Sens-I')
+    # info_dict['cryostat_C'] = lakeshore336.read()['lakeshore336_temp_C_T']['value']
+    # info_dict['cryostat_C_V'] = caget('XF:28ID1-ES{LS336:1-Chan:C}Val:Sens-I')
+    # info_dict['cryostat_D'] = lakeshore336.read()['lakeshore336_temp_D_T']['value']
+    # info_dict['cryostat_D_V'] = caget('XF:28ID1-ES{LS336:1-Chan:D}Val:Sens-I')
 
-    info_dict['hotairblower'] = hotairblower.read()['hotairblower']['value']
-    info_dict['linkam_T96'] = linkam_T96.readback.get()
-    info_dict['cryostream_T'] = cryostream.read()['cryostream_T']['value']
-    info_dict['eurotherm3504'] = eurotherm3504.read()['eurotherm3504']['value']
+    # info_dict['hotairblower'] = hotairblower.read()['hotairblower']['value']
+    # info_dict['linkam_T96'] = linkam_T96.readback.get()
+    info_dict['cryostream_T'] = cs800.read()['temperature']['value']
+    # info_dict['eurotherm3504'] = eurotherm3504.read()['eurotherm3504']['value']
 
 
 
@@ -99,10 +101,43 @@ def measurement_data(): # .......Captures metadata
     return info_dict
 
 
-def pila_3pos(dets, exposure, extra_md={}):
-# def pdf_RE4(dets, exposure, extra_md={}):
-# def pdf_RE4(dets, exposure, areaDet_name='pe1c', metadata={}):
+# from xpdacq.xpdacq import inject_metaddta
+
+def _inject_pilatus_3pos(msg):
+    """Inject the 3 positions of Pilstus in start.
+
+        Tried on 2025/11/18 by CHL and doesn't work.
+        msg.kwargs only goes into metadata when msg.command=='opend_run'. 
+    """
+    # if msg.command == "open_run" and msg.kwargs.get("dark_frame") is not True:
+    if msg.command == "create":
+        print(f'\n{msg.command = }\n')
+        x:dict = Grid_X.read()['Grid_X']
+        y:dict = Grid_Y.read()['Grid_Y']
+        print(f'\n{x = }\n')
+        
+        # x:dict = 22
+        # y:dict = 12
     
+        try:
+            msg.kwargs["Pilatus_3pos_x"].append(x)
+            msg.kwargs["Pilatus_3pos_x"].append(y)
+
+        except KeyError:
+            msg.kwargs["Pilatus_3pos_x"] = [x]
+            msg.kwargs["Pilatus_3pos_y"] = [y]
+
+        print(f'\n{msg.kwargs = }\n')
+
+    else:
+        print(f'\n{msg.command = }\n')
+        print(f'\n{msg.kwargs = }\n')
+
+    return msg
+
+
+
+def pila_3pos(dets, exposure, extra_md={}):    
     """
     Take one reading from area detector with given exposure time
 
@@ -124,17 +159,122 @@ def pila_3pos(dets, exposure, extra_md={}):
 
     to see which device is being linked
     """
+            
+    area_det = xpd_configuration["area_det"]       
     
-    # # change detector in configuration to the given one
-    # if xpd_configuration["area_det"].name == areaDet_name:
-    #     pass
-    # else:
-    #     if areaDet_name == 'pe1c':
-    #         xpd_configuration["area_det"] = pe1c
-    #     elif areaDet_name == 'pe2c':
-    #         xpd_configuration["area_det"] = pe2c
-    #     elif areaDet_name == 'pilatus1':
-    #         xpd_configuration["area_det"] = pilatus1
+    # TODO: check if _configure_area_det for pilatus
+    # setting up area_detector
+    (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
+    
+    # update md
+    # md = extra_md
+    _md = ChainMap(
+        {
+            "sp_time_per_frame": acq_time,
+            "sp_num_frames": num_frame,
+            "sp_requested_exposure": exposure,
+            "sp_computed_exposure": computed_exposure,
+            "sp_type": "bps.trigger",
+            "sp_uid": str(uuid.uuid4()),
+            "sp_plan_name": "pila_3pos",
+            "sp_detector": area_det.name, 
+            "detectors": [area_det.name],
+            # "Pilatus_3pos_x": [],
+            # "Pilatus_3pos_y": [],
+            # "data_keys": "pe1c_image", 
+        },
+    )
+    _md.update(extra_md)
+
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in extra_md.keys():
+        det_x_pos = extra_md['det_x_pos']
+
+    if 'det_y_pos' in extra_md.keys():
+        det_y_pos = extra_md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+
+    @bpp.stage_decorator([area_det]+motors)
+    @bpp.run_decorator(md=_md)
+    def pdf_RE_inner(area_det, det_x_pos=det_x_pos, det_y_pos=det_y_pos):
+        # _md = {'detectors':[det.name]}
+        # _md.update(md or {})
+        
+        def trigger_det(stream_name):
+            ret = {}
+            yield from bps.trigger(area_det, wait=True)
+            yield from bps.create(name=stream_name)
+            # reading = (yield from bps.read(area_det))
+            # print(f"reading = {reading}")
+            # ret.update(reading)
+            yield from bps.read(area_det)
+            yield from bps.read(Grid_X)
+            yield from bps.read(Grid_Y)
+            yield from bps.save()
+
+        if 'pe1' in area_det.name:
+            yield from periodic_dark(trigger_det(f"{area_det.name}_00"))
+                
+        elif 'pilatus' in area_det.name:
+            # if det_x_pos==None and det_y_pos==None:
+            #     det_x_pos = [40.644, 31.356, 36]
+            #     det_y_pos = [-3.356, -12.644, -8]
+            # else:
+            #     pass
+            
+            for i in range(len(det_x_pos)):
+                yield from bps.mv(fs, 1)
+                print(f'Open shutter for Pilatus position {i}')
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                # trigger_det_mutator = trigger_det(f"{area_det.name}_pos{i}")
+                # trigger_det_mutator = bpp.msg_mutator(trigger_det_mutator, _inject_pilatus_3pos)
+                # trigger_det_mutator = periodic_dark(trigger_det_mutator)
+                yield from periodic_dark(trigger_det(f"{area_det.name}_pos{i}"))
+                # yield from trigger_det_mutator
+                yield from bps.mv(fs, 0)
+                print(f'Finish Pilatus position {i} and close shutter')
+    
+    # plan_msg_mutator = pdf_RE_inner(area_det)
+    # plan_msg_mutator = bpp.msg_mutator(plan_msg_mutator, _inject_pilatus_3pos)
+    yield from pdf_RE_inner(area_det)
+
+
+
+def pila_3pos_mu(dets, exposure, md):
+    grand_plan = pila_3pos(dets, exposure, extra_md=md)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_pilatus_3pos)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
+    return (yield from grand_plan)
+
+
+
+def pila_3pos_fs(dets, exposure, extra_md={}):    
+    """
+    Take one reading from area detector with given exposure time
+
+    Parameters
+    ----------
+    dets : list
+        list of 'readable' objects. default to area detector
+        linked to xpdAcq.
+    exposure : float
+        total time of exposrue in seconds
+
+    Notes
+    -----
+    area detector being triggered will  always be the one configured
+    in global state. To find out which these are, please using
+    following commands:
+
+        >>> xpd_configuration['area_det']
+
+    to see which device is being linked
+    """
             
     area_det = xpd_configuration["area_det"]       
     
@@ -191,10 +331,10 @@ def pila_3pos(dets, exposure, extra_md={}):
             yield from bps.read(Grid_Y)
             yield from bps.save()
 
-        if area_det.name == 'pe1c':
+        if 'pe1' in area_det.name:
             yield from periodic_dark(trigger_det(f"{area_det.name}_00"))
                 
-        elif area_det.name == 'pilatus1':
+        elif 'pilatus' in area_det.name:
             # if det_x_pos==None and det_y_pos==None:
             #     det_x_pos = [40.644, 31.356, 36]
             #     det_y_pos = [-3.356, -12.644, -8]
@@ -202,14 +342,14 @@ def pila_3pos(dets, exposure, extra_md={}):
             #     pass
             
             for i in range(len(det_x_pos)):
-                # Grid_X.move(det_x[i])
-                # Grid_Y.move(det_y[i])
+                # yield from bps.mv(fs, 1)
+                # print(f'Open shutter for Pilatus position {i}')
                 yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
                 yield from periodic_dark(trigger_det(f"{area_det.name}_pos{i}"))
-                    
-                
+                # yield from bps.mv(fs, 0)
+                # print(f'Finish Pilatus position {i} and close shutter')
+    
     yield from pdf_RE_inner(area_det)
-
 
 
 
@@ -266,9 +406,11 @@ def repeat_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
 
 
 
-def _pila_pre_plan(dets, exposure):
+def _pre_plan(dets, exposure):
     """Handle detector exposure time + xpdan required metadata"""
 
+    xpd_configuration["area_det"] = dets[0]
+    
     # if 'pilatus1' not in dets[0].name:
     #     raise ValueError('This plan is for pilatus but not pilatus in dets')
 
@@ -276,10 +418,10 @@ def _pila_pre_plan(dets, exposure):
     # from xpdacq.beamtime import _configure_area_det
     for ad in (d for d in dets if hasattr(d, "cam")):
         (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
-    else:
-        acq_time = 0
-        computed_exposure = exposure
-        num_frame = 0
+    # else:
+    #     acq_time = 0
+    #     computed_exposure = exposure
+    #     num_frame = 0
 
     sp = {
         "time_per_frame": acq_time,
@@ -299,7 +441,7 @@ def _pila_pre_plan(dets, exposure):
             "sp_computed_exposure": computed_exposure,
             "sp_type": "bps.trigger",
             "sp_uid": str(uuid.uuid4()),
-            "sp_plan_name": "pilatus_3pos",
+            "sp_plan_name": "trigger",
             "sp_detector": dets[0].name, 
             "detectors": [area_det.name for area_det in dets],
             # "data_keys": "pe1c_image", 
@@ -309,7 +451,8 @@ def _pila_pre_plan(dets, exposure):
     # update md
     # _md.update({"sp": sp, **{f"sp_{k}": v for k, v in sp.items()}})
     _md.update({"sp": sp, })
-
+    print(_md)
+    
     return _md
 
 
@@ -323,7 +466,7 @@ OT_stage_2_X_hinted = EpicsMotor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X
 ## revised from pila_3pos (pdf_RE4) for putting into jog
 def _pila_single(dets, n, exposure, md=None, motors = [Grid_X, Grid_Y, Grid_Z]):
     _md = md or {}
-    sp_md = yield from _pila_pre_plan(dets, exposure)
+    sp_md = yield from _pre_plan(dets, exposure)
     _md.update(sp_md)
     stream_name = f"{dets[0].name}_pos{n}"
     pos_dict = {stream_name:{}}
@@ -383,10 +526,12 @@ def pre_pila_3pos(dets, extra_md={}):
             
             ## The below two lines are just for test and need to be commented afterwards by CHLin 2025/08/29
             print(f'num of pila_img{i = }')
-            yield from bps.mvr(OT_stage_2_X_hinted, 1, wait=True)
+            # yield from bps.mvr(OT_stage_2_X_hinted, 1, wait=True) ## for testing when not want to move pilatus
+            yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
             
             yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}", wait=True))
-            
+    
+    # inner_scan_msg_mutator = 
     yield from inner_scan(dets, det_x_pos=det_x_pos, det_y_pos=det_y_pos)
 
 
@@ -396,7 +541,7 @@ def pre_pila_3pos(dets, extra_md={}):
 def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
     """Take a count while "rocking" the y-position"""
     _md = md or {}
-    sp_md = yield from _pila_pre_plan(dets, exposure)
+    sp_md = yield from _pre_plan(dets, exposure)
     _md.update(sp_md)
     _md["plan_name"] = "jog_pila_3pos"
     _md["jog_md"] = {"start": start, "stop": stop, "motor": motor.name}
@@ -405,7 +550,7 @@ def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
     def per_shot(dets):
         nonlocal start, stop
         yield from bps.mv(motor, start)  # got to initial position
-        yield from bps.mv(motor.velocity, abs(stop - start) / exposure, timeout=1)  # set velocity
+        yield from bps.mv(motor.velocity, abs(stop - start) / (exposure*3.0+1.0), timeout=1)  # set velocity
         gp = short_uid("rocker")
         yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
         # yield from bps.trigger_and_read(dets)  # collect off detector
@@ -418,38 +563,246 @@ def jog_pila(dets, exposure, motor, start, stop, *, num=1, md=None):
                                     num=num))
 
 
-# def jog_pila(dets, exposure_s, motor, start, stop, md=None):
-#     """pass total exposure time (in seconds), motor name (i.e. Grid_Y), start and stop positions for the motor."""
-#     # yield from rocking_ct([pilatus], exposure_s, motor, start, stop)
-#     yield from rocking_pila_3pos(dets, exposure_s, motor, start, stop, md=md)
+
+
+## Put jog into each position for pilatus 3-position scan
+def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
+    """Take a count while "rocking" the y-position"""
+
+
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+
+    if 'det_x_pos' in md.keys():
+        det_x_pos = md['det_x_pos']
+
+    if 'det_y_pos' in md.keys():
+        det_y_pos = md['det_y_pos'] 
+
+    _md = md or {}
+    sp_md = yield from _pre_plan(dets, exposure)
+    _md.update(sp_md)
+    _md["plan_name"] = "jog_pila_3pos"
+    _md["jog_md"] = {"start": start, "stop": stop, "motor": motor.name}
+
+
+    # nonlocal start, stop
+    @bpp.reset_positions_decorator([motor.velocity])
+    def inner_jog(gp, motor=motor, start=start, stop=stop):
+        yield from bps.mv(motor, start)  # got to initial position
+        yield from bps.mv(motor.velocity, abs(stop-start)/(exposure+2.0), timeout=1)  # set velocity
+        # gp = short_uid("rocker")
+        yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+
+
+    def per_shot(dets):
+
+        def trigger_and_wait(stream_name, wait=True):
+            for det in dets:
+                ret = {}
+                yield from bps.trigger(det, wait=wait)
+                yield from bps.create(name=stream_name)
+                yield from bps.read(det)
+                yield from bps.read(Grid_X)
+                yield from bps.read(Grid_Y)
+                yield from bps.save()
+
+        nonlocal motor, start, stop
+        # @bpp.reset_positions_decorator([motor.velocity])
+        # def inner_jog(gp):
+        #     yield from bps.mv(motor, start)  # got to initial position
+        #     yield from bps.mv(motor.velocity, abs(stop-start)/(exposure+2.0), timeout=1)  # set velocity
+        #     # gp = short_uid("rocker")
+        #     yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
+
+        for i in range(len(det_x_pos)):
+            print(f'num of pila_img{i = }')
+            yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+            
+            gp = short_uid("rocker")
+            yield from inner_jog(gp, motor=motor, start=start, stop=stop)
+            
+            yield from bps.mv(fs, 1)
+            print(f'Open shutter for Pilatus position {i}')
+            yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}", wait=True))
+            yield from bps.mv(fs, 0)
+            print(f'Finish Pilatus position {i} and close shutter')
+            
+            yield from bps.wait(group=gp)
+            # start, stop = stop, start
+
+    return (yield from repeat_count(dets, md=_md, 
+                                    per_shot=per_shot if start != stop else bps.trigger_and_read, 
+                                    num=num))
 
 
 
-'''
-t0 = time.time()
-xrun({}, jog_pila([pilatus1], 20, OT_stage_2_Y, 20, 25, ), dark_strategy=no_dark)
-t1 = time.time()
-'''
+
+def jog_loop(exposure, motor, start, stop):
+
+    yield from bps.mv(motor, start)  # go to initial position
+    
+    motor_max_velocity = 5 #motor.VMAX.get() # read from ophyd object
+    jog_distance = motor_max_velocity * exposure
+    print(f'{jog_distance = } mm/s')
+    sample_distance = abs(stop-start)
+    print(f'{sample_distance = } mm')
+    num_jogging = int(jog_distance/sample_distance)
+
+    @bpp.stage_decorator([motor])
+    def inner_jog(motor=motor, start=start, stop=stop, jog_distance=jog_distance, sample_distance=sample_distance):
+        gp = short_uid("rocker")
+        for i in range(num_jogging):            
+        # while jog_distance-sample_distance > 0:
+            yield from bps.abs_set(motor, stop, )  # set motor to move towards end
+            yield from bps.abs_set(motor, start, )  # go to initial position
+            # yield from bps.mv(motor, start, )  # set motor to move towards end
+
+            jog_distance -= sample_distance
+            print(f'{jog_distance = } mm/s')
+
+        yield from bps.wait(group=gp)
+    
+    yield from inner_jog()  # set motor to move towards end
 
 
-# def dk_decorator(generator):
-#     wrapper = bpp.msg_mutator(generator, _inject_qualified_dark_frame_uid)
-#     return bpp.make_decorator(wrapper)
 
-
-# @dk_decorator
-def test_trigger(dets, exposure, stream_name, sample_name='test', md=None):
+def tirgger_pila(dets, exposure, sample_name, md):
+            
     _md = md or {}
     _md['sample_name'] = sample_name
-    sp_md = yield from _pila_pre_plan(dets, exposure)
-    sp_md["sp_plan_name"] = "test_plan",
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "tirgger_pila",
     _md.update(sp_md)
 
-    # from xpdacq.xpdacq import _validate_dark
-    # sc_dk_field_uid = _validate_dark()
-    # if sc_dk_field_uid is None:
-    #     sc_dk_field_uid = glbl['_dark_dict_list'][-1]['uid']
-    # _md['sc_dk_field_uid'] = sc_dk_field_uid
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in md.keys():
+        det_x_pos = md['det_x_pos']
+
+    if 'det_y_pos' in md.keys():
+        det_y_pos = md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+    
+    @bpp.stage_decorator(dets+motors)
+    @bpp.run_decorator(md=_md)
+    def _RE_inner(dets, det_x_pos, det_y_pos):
+        
+        def trigger_and_wait(stream_name) -> MsgGenerator:
+            for det in dets:
+                ret = {}
+                yield from bps.trigger(det, wait=True)
+                yield from bps.create(name=stream_name)
+                reading = (yield from bps.read(det))
+                # yield from bps.read(Grid_X)
+                # print(f"reading = {reading}")
+                # ret.update(reading)
+                return (yield from bps.save())
+        
+        def _trigger_3pos():
+            for i in range(len(det_x_pos)):
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from bps.mv(fs, 1)
+                print(f'Open shutter for Pilatus position {i}')
+                # yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}"))
+                yield from trigger_and_wait(f"{dets[0].name}_pos{i}")
+                yield from bps.mv(fs, 0)
+                print(f'Finish Pilatus position {i} and close shutter')
+
+        yield from _trigger_3pos()
+                    
+    yield from _RE_inner(dets, det_x_pos, det_y_pos)
+
+
+
+
+def tirgger_pila_xlsx(dets, exposure, md):
+            
+    _md = md or {}
+    # _md['sample_name'] = sample_name
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "tirgger_pila",
+    _md.update(sp_md)
+
+    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    det_x_pos = [20.644, 11.356, 16]
+    det_y_pos = [-3.356, -12.644, -8]
+
+    if 'det_x_pos' in md.keys():
+        det_x_pos = md['det_x_pos']
+
+    if 'det_y_pos' in md.keys():
+        det_y_pos = md['det_y_pos'] 
+
+    motors = [Grid_X, Grid_Y, Grid_Z]
+    
+    @bpp.stage_decorator(dets+motors)
+    @bpp.run_decorator(md=_md)
+    def _RE_inner(dets, det_x_pos, det_y_pos):
+        
+        def trigger_and_wait(stream_name) -> MsgGenerator:
+            for det in dets:
+                ret = {}
+                yield from bps.trigger(det, wait=True)
+                yield from bps.create(name=stream_name)
+                reading = (yield from bps.read(det))
+                # yield from bps.read(Grid_X)
+                # print(f"reading = {reading}")
+                # ret.update(reading)
+                return (yield from bps.save())
+        
+        def _trigger_3pos():
+            for i in range(len(det_x_pos)):
+                yield from bps.mv(Grid_X, det_x_pos[i], Grid_Y, det_y_pos[i])
+                yield from bps.mv(fs, 1)
+                print(f'Open shutter for Pilatus position {i}')
+                # yield from periodic_dark(trigger_and_wait(f"{dets[0].name}_pos{i}"))
+                yield from trigger_and_wait(f"{dets[0].name}_pos{i}")
+                yield from bps.mv(fs, 0)
+                print(f'Finish Pilatus position {i} and close shutter')
+
+        yield from _trigger_3pos()
+                    
+    yield from _RE_inner(dets, det_x_pos, det_y_pos)
+
+
+
+
+def trigger_areaDet(dets, exposure, sample_name, stream_name, md):
+    _md = md or {}
+    _md['sample_name'] = sample_name
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "trigger_areaDet",
+    _md.update(sp_md)
+
+    @bpp.stage_decorator(dets)
+    @bpp.run_decorator(md=_md)
+    def trigger_and_wait() -> MsgGenerator:
+        for det in dets:
+            ret = {}
+            yield from bps.trigger(det, wait=True)
+            yield from bps.create(name=stream_name)
+            reading = (yield from bps.read(det))
+            # yield from bps.read(Grid_X)
+            # print(f"reading = {reading}")
+            # ret.update(reading)
+            return (yield from bps.save())
+        
+    return (yield from periodic_dark(trigger_and_wait()))
+
+
+
+
+def trigger_areaDet_xlsx(dets, exposure, stream_name, md):
+    _md = md or {}
+    # _md['sample_name'] = sample_name
+    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md["sp_plan_name"] = "trigger_areaDet",
+    _md.update(sp_md)
 
     @bpp.stage_decorator(dets)
     @bpp.run_decorator(md=_md)
@@ -469,11 +822,83 @@ def test_trigger(dets, exposure, stream_name, sample_name='test', md=None):
 
 
 from xpdacq.xpdacq import _inject_qualified_dark_frame_uid, _inject_calibration_md, _inject_analysis_stage
-def trigger_dk(dets, exposure, stream_name, sample_name='test', md=None):
+
+def scan_with_dark(dets: list, 
+                   exposure: float, 
+                   sample_ID: int=0, 
+                   sample_info: dict={}, 
+                   md: dict={}, 
+                   stream_name: str='primary', 
+                   ):
+    
+    ## Inject sample metadata from Excel spreadsheet
+    try:
+        sample_meta:dict = bt.samples.sel(sample_ID)
+        
+    ## Inject sample metadata manually from sample_info
+    except (KeyError, IndexError):
+        sample_meta:dict = sample_info
+
+    print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
+    
+    ## Check composition string
+    try:
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} *****\n')
+    except KeyError:
+        sample_meta["composition_string"] = 'Ni1.0'
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} (dummy) *****\n')
+    
+    md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = test_trigger(dets, exposure, stream_name, sample_name=sample_name, md=None)
+    grand_plan = trigger_areaDet_xlsx(dets, exposure, stream_name, md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
+    return (yield from grand_plan)
+
+
+
+def scan_3pos(dets, exposure, sample_name='test', md={}):
+    ## while passing plan as a generator, no need to add "yield from"
+    grand_plan = tirgger_pila(dets, exposure, sample_name, md)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
+    grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
+    return (yield from grand_plan)
+
+
+
+## Updated by CHLin on 2025/11/18
+def scan_3pos_xlsx(dets: list, 
+                   exposure: float, 
+                   sample_ID: int=0, 
+                   sample_info: dict={}, 
+                   md: dict={}, 
+                   ):
+    
+    ## Inject sample metadata from Excel spreadsheet
+    try:
+        sample_meta:dict = bt.samples.sel(sample_ID)
+
+    ## Inject sample metadata manually from sample_info
+    except (KeyError, IndexError):
+        sample_meta:dict = sample_info
+
+    print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
+
+    ## Check composition string
+    try:
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} *****\n')
+    except KeyError:
+        sample_meta["composition_string"] = 'Ni1.0'
+        print(f'\n***** composition_string = {sample_meta["composition_string"]} (dummy) *****\n')
+    
+    md.update(sample_meta)
+
+    ## while passing plan as a generator, no need to add "yield from"   
+    grand_plan = tirgger_pila_xlsx(dets, exposure, md)
+    # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
     return (yield from grand_plan)
@@ -483,7 +908,7 @@ def trigger_dk(dets, exposure, stream_name, sample_name='test', md=None):
 def pd_counts(dets, exposure, sample_name='test', md=None):
     _md = md or {}
     _md['sample_name'] = sample_name
-    sp_md = yield from _pila_pre_plan(dets, exposure)
+    sp_md = yield from _pre_plan(dets, exposure)
     # sp_md = {}
     sp_md["sp_plan_name"] = "pd_counts"
     _md.update(sp_md)
@@ -491,9 +916,18 @@ def pd_counts(dets, exposure, sample_name='test', md=None):
     yield from periodic_dark(count(dets, md=_md))
 
 
+import h5py
+from skimage import io
+def nxs_to_tiff(fn:str, key:str=None):
+    if key is None:
+        key = 'entry/instrument/detector/data'
+    
+    f_h5 = h5py.File(fn, 'r')
+    data =  np.asarray(f_h5['entry/instrument/detector/data'])
+    sum_data = np.mean(data, axis=0, dtype=np.float32)
 
-def one_rack_jog():
-    return None
+    out_fn = f'{fn[:-4]}.tiff'
+    io.imsave(out_fn, sum_data)
 
 
 # class Cam(AreaDetector):
@@ -780,7 +1214,7 @@ def scan_shifter_saxs(
                 print("what, what, whaaat?")
         else:
             print("Ok, great.")
-            go_on = True_motor_move_scan_shifter_pos
+            go_on = True
 
     return peak_cen_list
 
@@ -819,6 +1253,72 @@ def scan_pos_csv(pos_list, I_list, save=True, fn_prefix=''):
     return df
 
 
+## A revision to assign plt.figure by CHL on 2025/098/23
+def _motor_move_scan_shifter_pos_f(motor, xmin, xmax, numx, use_pe2c=False, figure=None):
+    from epics import caget
+    #ensure shutter is closedi
+    print ('closing shutter')
+    # RE(mv(fs,"Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
+    I_list = np.zeros(numx)
+    dx = (xmax - xmin) / numx
+    pos_list = np.linspace(xmin, xmax, numx)
+    print ('moving to starting postion')
+    RE(mv(motor,pos_list[0]))
+    print ('opening shutter')
+    # RE(mv(fs, "Open"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 1))
+    time.sleep(1)
+    
+    plt.ion()
+    ## REvised by CHL on 2025/09/23
+    # fig1, ax1 = plt.subplots()
+    try:
+        fig1 = figure
+    except (TypeError, AttributeError):
+        fig1, ax1 = plt.subplots()
+
+    fig1.clear()
+    ax1 = fig1.gca()
+    use_det = True
+    temp_pos_list = []
+    temp_I_list = []
+    for i, pos in enumerate(pos_list):
+        print("moving to " + str(pos))
+        try:
+            motor.move(pos)
+        except Exception:
+            print("well, something bad happened")
+            return None
+
+        if use_det == True:
+            my_int = float(caget("XF:28ID1-ES{Det:PE1}Stats2:Total_RBV"))
+            if use_pe2c:
+                my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats5:Total_RBV"))  
+                time.sleep(.5)
+        else:
+            my_int = float(caget("XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd"))
+
+        temp_I_list.append(my_int)
+        temp_pos_list.append(pos)
+        stow_recent_shifter_scan(temp_pos_list, temp_I_list)
+
+        I_list[i] = my_int
+        ax1.scatter(pos, my_int, color="k")
+        plt.pause(0.01)
+
+    # plt.plot(pos_list, I_list)
+    ax1.plot(pos_list, I_list)
+    # plt.close()
+    # RE(mv(fs, "Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
+    stow_recent_shifter_scan(pos_list, I_list)
+    return pos_list, I_list
+
+
 
 ## A revision to disable human interaction by CHLin 2025/07/07
 def scan_shifter_pos_ask(
@@ -842,6 +1342,20 @@ def scan_shifter_pos_ask(
         return input(q).lower().strip()[0] == "y"
 
     init_pos = motor.position
+
+    import matplotlib.pyplot as plt
+    ## Create two plt.figure objects for plotting scaaning and fitting figures
+    ## Added by CHL on 2025/09/23
+    plt.ion()
+    f_fitting = plt.figure('Fitting')
+    ax = f_fitting.gca()
+    plt.cla()
+    f_fitting.canvas.draw_idle()
+    # f_fitting.canvas.manager.show()
+    # f_fitting.canvas.flush_events()
+    
+    f_scanning = plt.figure('Scanning')
+
 
     print("")
     if not recover_last_scan:
@@ -871,8 +1385,8 @@ def scan_shifter_pos_ask(
                 print("Aborting operation")
                 return None
     
-        pos_list, I_list = _motor_move_scan_shifter_pos(
-            motor=motor, xmin=xmin, xmax=xmax, numx=numx)
+        pos_list, I_list = _motor_move_scan_shifter_pos_f(
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx, figure=f_scanning)
     else:
         print ('recovering last scan from redis...')
         return_to_start = False
@@ -904,7 +1418,8 @@ def scan_shifter_pos_ask(
             "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
         ):
             return pos_list, I_list
-    plt.close()
+    
+    # plt.close()
 
     go_on = False
     tmin_height = min_height
@@ -930,6 +1445,9 @@ def scan_shifter_pos_ask(
                 min_dist=tmin_dist,
                 peak_rad=tpeak_rad,
                 need_interaction = need_interaction, 
+                open_new_plot=False,
+                figure=f_fitting, 
+
             )
         else:
             go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
@@ -940,8 +1458,10 @@ def scan_shifter_pos_ask(
                 min_dist=tmin_dist,
                 peak_rad=tpeak_rad,
                 open_new_plot=False,
-                need_interaction = need_interaction,
+                need_interaction = need_interaction, 
+                figure=f_fitting, 
             )
+        f_fitting.canvas.draw_idle()
         fit_attempts += 1
         # if yn_question("\nHappy with the fit? [y/n] ") == False:
 
@@ -975,7 +1495,7 @@ def scan_shifter_pos_ask(
 ## Modificaiton: remove human intercaation
 def _identify_peaks_scan_shifter_pos_ask(
     x, y, num_samples=0, min_height=0.02, min_dist=5, peak_rad=1.5, open_new_plot=True, 
-    need_interaction = False, 
+    need_interaction = False, figure=None, 
 ):
     from scipy.signal import find_peaks
     import matplotlib.pyplot as plt
@@ -985,12 +1505,20 @@ def _identify_peaks_scan_shifter_pos_ask(
 
     if open_new_plot:
         print("making new figure")
-        plt.figure()
+        this_fig = plt.figure()
+    
     else:
         print("clearing figure")
-        this_fig = plt.gcf()
-        this_fig.clf()
-        plt.pause(0.01)
+
+        try:
+            this_fig = figure
+        except (TypeError, AttributeError):
+            this_fig = plt.gcf()
+
+    plt.ion() 
+    # this_fig.clear()
+    this_ax = this_fig.gca()
+    plt.pause(0.5)
 
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
@@ -1022,14 +1550,13 @@ def _identify_peaks_scan_shifter_pos_ask(
     else:
         print("WARNING: I saw " + str(len(peaks)) + " samples!")
     print("doing a thing")
-    this_fig = plt.gcf()
-    this_fig.clf()
 
-    plt.plot(x, y)
-    plt.plot(x[peaks], y[peaks], "kx")
-    plt.show()
-    print("done")
-    plt.pause(0.01)
+    ## plot identified peaks
+    # this_ax.plot(x, y)
+    # this_ax.plot(x[peaks], y[peaks], "kx")
+    # plt.show()
+    # print("done")
+    # plt.pause(0.01)
     
     # add need_interaction by CHLin on 2025/07/07
     if need_interaction:
@@ -1049,13 +1576,14 @@ def _identify_peaks_scan_shifter_pos_ask(
 
         return a * np.exp(-((x - c) ** 2.0) / (2.0 * (w ** 2))) + b
 
-    this_fig = plt.gcf()
-    this_fig.clf()
+    # this_fig = plt.gcf()
+    # this_fig.clf()
     for i in range(len(peaks)):
         cut_x, cut_y = cut_data(
             x, y, peak_cen_guess_list[i] - peak_rad, peak_cen_guess_list[i] + peak_rad
         )
-        plt.plot(cut_x, cut_y)
+        # plt.plot(cut_x, cut_y)
+        this_ax.plot(cut_x, cut_y)
 
         this_guess = [peak_cen_guess_list[i], 1, peak_amp_guess_list[i], 0.0001]
         low_limits = [peak_cen_guess_list[i] - peak_rad, 0.05, 0.0, 0.0]
@@ -1064,14 +1592,15 @@ def _identify_peaks_scan_shifter_pos_ask(
         popt, _ = curve_fit(
             this_func, cut_x, cut_y, p0=this_guess, bounds=(low_limits, high_limits)
         )
-        plt.plot(cut_x, this_func(cut_x, *popt), "k--")
+        # plt.plot(cut_x, this_func(cut_x, *popt), "k--")
+        this_ax.plot(cut_x, this_func(cut_x, *popt), "k--")
 
         fit_peak_amp_list[i] = popt[2]
         fit_peak_wid_list[i] = popt[1]
         fit_peak_cen_list[i] = popt[0]
         fit_peak_bgd_list[i] = popt[3]
 
-    plt.show()
+    # plt.show()
     plt.pause(0.01)
 
     # finally, return this as a numpy list
