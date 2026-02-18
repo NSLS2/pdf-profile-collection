@@ -92,16 +92,16 @@ class img_getpdf(img_integrate.img_integrate):
         # sqfqgr_path = ''
 
         if 'pilatus' in self.detector:
-            sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sum', pdfgetter)
+            sqfqgr_path = write_pdfgetter(self.process_det_dir, f'{self.file_name_prefix}_sum', pdfgetter)
 
         elif 'pe1' in self.detector:
             if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-                sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_flat', pdfgetter)
+                sqfqgr_path = write_pdfgetter(self.process_det_dir, f'{self.file_name_prefix}_flat', pdfgetter)
             else:
-                sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sub', pdfgetter)
+                sqfqgr_path = write_pdfgetter(self.process_det_dir, f'{self.file_name_prefix}_sub', pdfgetter)
 
         else:
-            sqfqgr_path = write_pdfgetter(self.process_dir, f'{self.file_name_prefix}_sub', pdfgetter)
+            sqfqgr_path = write_pdfgetter(self.process_det_dir, f'{self.file_name_prefix}_sub', pdfgetter)
 
         # if not test:
         #     plt.show()
@@ -151,7 +151,7 @@ class img_getpdf(img_integrate.img_integrate):
 
 
         iq_array = iq_df.to_numpy().T
-        sqfqgr_path = self.transform_bkg(iq_array, self.process_dir)
+        sqfqgr_path = self.transform_bkg(iq_array, self.process_det_dir)
         
         print(f'\n*** {os.path.basename(sqfqgr_path["gr"])} saved!! ***\n')
 

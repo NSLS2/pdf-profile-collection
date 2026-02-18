@@ -59,6 +59,11 @@ class imgData_2D(imgData_config):
     
 
     @property
+    def wavelength(self):
+        return self.run.start['calibration_md']['Wavelength']*(10**10)
+    
+
+    @property
     def img_key(self):
         return f'{self.detector}_image'
 
@@ -153,6 +158,12 @@ class imgData_2D(imgData_config):
 
         return T
 
+    @property
+    def T_unit(self):
+        if 'cryo' in self.T_controller:
+            return 'K'
+        else:
+            return 'C'
 
     @property
     def readable_time(self):
@@ -164,7 +175,7 @@ class imgData_2D(imgData_config):
         T = self.temperature
 
         if type(T) is float:
-            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_K'
+            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_{self.T_unit}'
 
         else:
             return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}'
@@ -176,7 +187,7 @@ class imgData_2D(imgData_config):
 
 
     @property
-    def process_dir(self):
+    def process_det_dir(self):
         if 'pilatus' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
@@ -186,12 +197,45 @@ class imgData_2D(imgData_config):
         elif 'pe2' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
+        elif 'lambda' in self.detector:
+            return os.path.join(self.data_dir, f'{self.detector}')
+
         else:
             return os.path.join(self.data_dir, 'unkown_det')
         
+
+    @property
+    def process_img_dir(self):
+        return os.path.join(self.process_det_dir, 'img')
     
 
-    def acq_mode(self, PDF_limit=0.4, SAXS_limit=2.0, ):
+    @property
+    def process_iq_dir(self):
+        return os.path.join(self.process_det_dir, 'iq')
+
+
+    @property
+    def process_tth_dir(self):
+        return os.path.join(self.process_det_dir, 'tth')
+    
+
+    # @property
+    # def process_sq_dir(self):
+    #     return os.path.join(self.process_det_dir, 'sq')
+    
+
+    # @property
+    # def process_fq_dir(self):
+    #     return os.path.join(self.process_det_dir, 'fq')
+    
+
+    # @property
+    # def process_gr_dir(self):
+    #     return os.path.join(self.process_det_dir, 'gr')
+
+
+
+    def acq_mode(self, PDF_limit=0.6, SAXS_limit=2.5, ):
 
         try:
             distance = self.run.start['calibration_md']['Distance']
@@ -266,10 +310,10 @@ class imgData_2D(imgData_config):
 
         self.process_img = self.sum_pilatus()
         
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
 
-        tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.tiff')
-        tifffile.imsave(tiff_fn, self.process_img)
+        tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sum.tiff')
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img
@@ -312,18 +356,18 @@ class imgData_2D(imgData_config):
 
             self.process_img = self.process_img / flat_field
 
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
         
         if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sub.tiff')
         
-        tifffile.imsave(tiff_fn, self.process_img)
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img
@@ -350,18 +394,18 @@ class imgData_2D(imgData_config):
 
             self.process_img = self.process_img / flat_field
 
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
         
         if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sub.tiff')
         
-        tifffile.imsave(tiff_fn, self.process_img)
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img
