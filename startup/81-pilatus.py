@@ -7,8 +7,11 @@ from ophyd import (SingleTrigger,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector, 
 		           PilatusDetectorCam, StatsPlugin)
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
+from ophyd.areadetector import EpicsSignalWithRBV
+
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from collections import OrderedDict
+import uuid
 
 file_loading_timer.start()
 
@@ -57,10 +60,20 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
 class PilatusDetectorCamV33(PilatusDetectorCam):
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
                            string=True, kind='config')
+    auto_increment = Cpt(EpicsSignal, 'AutoIncrement', string=True)
+    file_name = Cpt(EpicsSignalWithRBV, 'FileName', string=True)
+    next_file_num = Cpt(EpicsSignal, 'FileNumber')
+    filename_format = Cpt(EpicsSignal, 'FileTemplate', string=True)
+    file_path = Cpt(EpicsSignal, "FilePath", string=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs['wait_for_plugins'] = 'Yes'
+        # self.stage_sigs['file_path'] = '/ramdisk/'
+        # self.stage_sigs['file_format'] = 0
+        # self.stage_sigs['auto_increment'] = 1
+        # self.stage_sigs['next_file_num'] = 0
+        # self.stage_sigs['filename_format'] = "%s%s_%6.6d.tiff"
 
     def ensure_nonblocking(self):
         self.stage_sigs['wait_for_plugins'] = 'Yes'
@@ -70,6 +83,11 @@ class PilatusDetectorCamV33(PilatusDetectorCam):
                 continue
             if hasattr(cpt, 'ensure_nonblocking'):
                 cpt.ensure_nonblocking()
+
+    def stage(self):
+        super().stage()
+        self.file_name.set(str(uuid.uuid4()))
+        # super().stage()
 
 
 class PilatusV33(SingleTriggerV33, PilatusDetector):
@@ -101,10 +119,10 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         # self.cam.num_images = num_images
 
 
-# pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
-# # pilatus1.tiff.read_attrs = []
-# pilatus1.tiff.kind = 'normal'
-# pilatus1.tiff.update_paths()
+pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
+# pilatus1.tiff.read_attrs = []
+pilatus1.tiff.kind = 'normal'
+pilatus1.tiff.update_paths()
 
 
 
@@ -141,6 +159,7 @@ def show_me_db2(
         print("issue... passing")
         pass
     if dark_subtract:
+
         if "sc_dk_field_uid" in db[my_id].start.keys():
             my_dark_id = db[my_id].start["sc_dk_field_uid"]
             if new_db:
