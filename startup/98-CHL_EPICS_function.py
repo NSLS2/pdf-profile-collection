@@ -20,6 +20,7 @@ import os
 bec.disable_plots()
 
 def tqdm_sleep(rest_time, message='Sleep'):
+
     from tqdm import tqdm
     for j in tqdm(range(0,100), desc=message):
         time.sleep(rest_time/100)
@@ -288,10 +289,21 @@ def repeat_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
 
 
 ## A pre-plan to configure the area detector
-def _pre_plan(dets, exposure):
+def _pre_plan(dets, exposure, frame_acq_time=None):
     """Handle detector exposure time + xpdan required metadata"""
 
-    xpd_configuration["area_det"] = dets[0]
+    try:
+        xpd_configuration["area_det"] = dets[0]
+
+    except (NameError, KeyError):
+        pass
+
+    
+    ## Change frame acquisition time (not using glbl)
+    if (type(frame_acq_time) is float) or (type(frame_acq_time) is int):
+        for det in dets:
+            yield from bps.mv(det.cam.acquire_time, frame_acq_time)
+
 
     # if 'pilatus1' not in dets[0].name:
     #     raise ValueError('This plan is for pilatus but not pilatus in dets')
@@ -503,13 +515,14 @@ def jog_loop(exposure, motor, start, stop):
 
 
 
-def tirgger_pila_3pos(dets, exposure, md, jogging=[]):
+def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
 
     _md = md or {}
     # _md['sample_name'] = sample_name
     sp_md = yield from _pre_plan(dets, exposure)
     sp_md["sp_plan_name"] = "tirgger_pila",
     _md.update(sp_md)
+    _md.update({'user_config':user_config})
 
     if len(jogging) == 3:
         _md["plan_name"] = "jog_pila_3pos"
@@ -598,12 +611,13 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[]):
 
 
 
-def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[]):
+def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_acq_time=None, user_config={}):
     _md = md or {}
     # _md['sample_name'] = sample_name
-    sp_md = yield from _pre_plan(dets, exposure)
+    sp_md = yield from _pre_plan(dets, exposure, frame_acq_time=frame_acq_time)
     sp_md["sp_plan_name"] = "trigger_areaDet",
     _md.update(sp_md)
+    _md.update({'user_config':user_config})
 
     if len(jogging) == 3:
         _md["plan_name"] = "jog_areaDet"
@@ -671,15 +685,71 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[]):
 
 from xpdacq.xpdacq import _inject_qualified_dark_frame_uid, _inject_calibration_md, _inject_analysis_stage
 
-def scan_with_dark(dets: list,
-                   exposure: float,
-                   sample_ID: int=-1,
-                   sample_info: dict={},
-                   md: dict={},
-                   stream_name: str='primary',
+def scan_with_dark(dets: list, 
+                   exposure: float=0.1, 
+                   sample_ID: int=0, 
+                   sample_info: dict={}, 
+                   md: dict={}, 
+                   stream_name: str='primary', 
                    no_dark: bool=False, 
-                   jogging:list =[],
+                   jogging:list=[], 
+                   frame_acq_time: float=0.1, 
+                   user_config: dict={},
                    ):
+    """Take a scan with an aera detector for PDF or XRD
+
+    Args:
+        dets (list): 
+            list of detector ophyd object, e.g., [piatus1] or [pe1c]
+
+        exposure (float, optional): 
+            total exposure (measurement) time in seconds.  
+            Defaults to 0.1.
+
+        sample_ID (int, optional): 
+            sample index returned in bt.list(). 
+            Defaults to 0.
+
+        sample_info (dict, optional): 
+            when sample_ID is not given or found, pass sample_name and composition_string as dict here. 
+            e.g., sample_info = {'sample_name':'CeO2_quartz', 'composition_string':'CeO2'}
+            Defaults to {}.
+
+        md (dict, optional): 
+            additional metadata.
+            e.g., md = {'note':'dummy test'} 
+            Defaults to {}.
+
+        stream_name (str, optional): 
+            stream name in the event document, 'primary' is recommended.
+            Defaults to 'primary'.
+
+        no_dark (bool, optional): 
+            if no_dark = True, the dark scan will be skipped, especially for pilatus. 
+            Defaults to False.
+
+        jogging (list, optional): 
+            If jogging, three elemetns needs to be defined as [jog_motor, start, stop].
+            e.g.,  jogging = [OT_stage_2_X, 0.5, 3.7]
+            Defaults to [].
+
+        frame_acq_time (float, optional): 
+            Change frame acquistion time if needed, only for pe1c. 
+            Defaults to 0.1.
+
+        user_config (dict, optional): 
+            Pass self-defined configuration info to pdfstream.
+            e.g.,  user_config = {'auto_mask': False, 'qmaxinst':28, 'qmax':28.0, 'rpoly':0.7,
+                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',    
+                    'method': 'splitpixel'}
+            Defaults to {}.
+
+    Returns:
+        str: uid
+
+    Yields:
+        msg: Msg
+    """
 
     ## Inject sample metadata from Excel spreadsheet
     try:
@@ -701,7 +771,9 @@ def scan_with_dark(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=jogging)
+    grand_plan = trigger_areaDet(dets, exposure, stream_name, md, no_dark, 
+                                 jogging=jogging, frame_acq_time=frame_acq_time, 
+                                 user_config=user_config)
     
     if not no_dark:
         grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
@@ -715,12 +787,56 @@ def scan_with_dark(dets: list,
 
 ## Updated by CHLin on 2025/11/18
 def scan_pila_3pos(dets: list, 
-                   exposure: float, 
-                   sample_ID: int=-1, 
+                   exposure: float=0.1, 
+                   sample_ID: int=0, 
                    sample_info: dict={}, 
                    md: dict={}, 
-                   jogging:list =[],
+                   jogging: list=[], 
+                   user_config: dict={}, 
                    ):
+    
+    """Take 3 scans at 3 different dectecto positions for PDF or XRD, especially for pilatus
+
+    Args:
+        dets (list): 
+            list of detector ophyd object, e.g., [piatus1] or [pe1c]
+
+        exposure (float, optional): 
+            total exposure (measurement) time in seconds.
+            Defaults to 0.1.
+
+        sample_ID (int, optional): 
+            sample index returned in bt.list(). 
+            Defaults to 0.
+
+        sample_info (dict, optional): 
+            when sample_ID is not given or found, pass sample_name and composition_string as dict here. 
+            e.g., sample_info = {'sample_name':'CeO2_quartz', 'composition_string':'CeO2'}
+            Defaults to {}.
+
+        md (dict, optional): 
+            additional metadata.
+            e.g., md = {'note':'dummy test'} 
+            Defaults to {}.
+
+        jogging (list, optional): 
+            If jogging, three elemetns needs to be defined as [jog_motor, start, stop].
+            e.g.,  jogging = [OT_stage_2_X, 0.5, 3.7]
+            Defaults to [].
+
+        user_config (dict, optional): 
+            Pass self-defined configuration info to pdfstream.
+            e.g.,  user_config = {'auto_mask': False, 'qmaxinst':28, 'qmax':28.0, 'rpoly':0.7,
+                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',    
+                    'method': 'splitpixel'}
+            Defaults to {}.
+
+    Returns:
+        str: uid
+
+    Yields:
+        msg: Msg
+    """
 
     ## Inject sample metadata from Excel spreadsheet
     try:
@@ -742,7 +858,8 @@ def scan_pila_3pos(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = tirgger_pila_3pos(dets, exposure, md, jogging=jogging)
+    grand_plan = tirgger_pila_3pos(dets, exposure, md, 
+                                   jogging=jogging, user_config=user_config)
     # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)

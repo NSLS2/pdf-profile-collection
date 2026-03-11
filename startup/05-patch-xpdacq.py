@@ -82,7 +82,7 @@ def _configure_PE(det, exposure: float):
 
     ## Updated by CHL on 2025/11/01
     num_frame = float(np.ceil(exposure / acq_time))
-    yield from bps.mov(det.images_per_set, num_frame)
+    yield from bps.mv(det.images_per_set, num_frame)
     computed_exposure = float(num_frame * acq_time)
 
 
