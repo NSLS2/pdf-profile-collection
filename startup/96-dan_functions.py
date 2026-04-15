@@ -401,6 +401,9 @@ def scan_shifter_pos(
     return_to_start = True,
     recover_last_scan = False
 ):
+    ## reset frame time to 0.1 second always by CHLin on 2026/03/24
+    glbl['frame_acq_time'] = 0.1
+    
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
 
@@ -668,7 +671,8 @@ def _motor_move_scan_shifter_pos(motor, xmin, xmax, numx, use_pe2c=False):
         if use_det == True:
             my_int = float(caget("XF:28ID1-ES{Det:PE1}Stats2:Total_RBV"))
             if use_pe2c:
-                my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats5:Total_RBV"))  
+                # my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats5:Total_RBV"))
+                my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats2:MaxValue_RBV"))
                 time.sleep(.5)
         else:
             my_int = float(caget("XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd"))

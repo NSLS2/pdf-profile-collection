@@ -26,6 +26,16 @@ def tqdm_sleep(rest_time, message='Sleep'):
         time.sleep(rest_time/100)
 
 
+def sleep_sec_q(t):
+    import datetime
+    from tqdm import tqdm
+    now = datetime.datetime.now()
+    print(f'Sleep for a while: {t} seconds.')
+    print(f'Waiting starts at {now}')
+    for i in tqdm(range(0,100), desc='Sleep'):
+        yield from bps.sleep(t/100)
+
+
 
 def auto_name_file(filename_prefix, file_extension, directory=None):
     """
@@ -288,6 +298,32 @@ def repeat_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
 
 
 
+def _configure_frame_acq_time(area_det, new_frame_acq_time):
+    """function to configure frame acquire time of area detector
+        Adeapted from xpdacq.xpdacq_conf.configure_frame_acq_time
+        by CHL 2026/03/12
+    """
+    # stop acquisition
+    yield from bps.mv(area_det.cam.acquire, 0)
+    yield from bps.sleep(1)
+    
+    if hasattr(area_det, 'number_of_sets'):
+        yield from bps.mv(area_det.number_of_sets, 1)
+    
+    yield from bps.mv(area_det.cam.acquire_time, new_frame_acq_time)
+    
+    # extra wait time for device to set
+    yield from bps.sleep(1)
+    yield from bps.mv(area_det.cam.acquire, 1)
+    
+    print(
+        "INFO: area detector has been configured to new "
+        "acquisition time (time per frame)  = {}s".format(new_frame_acq_time)
+    )
+
+
+
+
 ## A pre-plan to configure the area detector
 def _pre_plan(dets, exposure, frame_acq_time=None):
     """Handle detector exposure time + xpdan required metadata"""
@@ -302,7 +338,10 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
     ## Change frame acquisition time (not using glbl)
     if (type(frame_acq_time) is float) or (type(frame_acq_time) is int):
         for det in dets:
-            yield from bps.mv(det.cam.acquire_time, frame_acq_time)
+            if frame_acq_time == det.cam.acquire_time.get():
+                pass
+            else:
+                yield from _configure_frame_acq_time(det, frame_acq_time)
 
 
     # if 'pilatus1' not in dets[0].name:
@@ -531,9 +570,15 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
     else:
         jogging_motor = OT_stage_2_Y
 
-    #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
+    # #det_x_pos = [40.644, 31.356, 36] - MA detector mounting is different 07/04/2025
     det_x_pos = [20.644, 11.356, 16]
     det_y_pos = [-3.356, -12.644, -8]
+
+    # ## New 3 positions for WAXS+SAXS
+    # x0 = 13.11075
+    # y0 = -9.074
+    # det_x_pos = [x0-27*0.172*1, x0-27*0.172*2, x0-27*0.172*3]
+    # det_y_pos = [y0+27*0.172*1, y0+27*0.172*2, y0+27*0.172*3]
 
     if 'det_x_pos' in md.keys():
         det_x_pos = md['det_x_pos']
@@ -663,6 +708,9 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
                 gp = short_uid("rocker")
                 yield from inner_jog(gp, motor=jogging[0], start=jogging[1], stop=jogging[2])
 
+            yield from bps.mv(fs, 1)
+            print(f'\nOpen shutter to start the run....')
+
             yield from bps.trigger(det, wait=True)
             yield from bps.create(name=stream_name)
             yield from bps.read(det)
@@ -675,11 +723,45 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
             # print(f"reading = {reading}")
             # ret.update(reading)
             yield from bps.save()
+
+            yield from bps.mv(fs, 0)
+            print(f'\nClose shutter to finish the run....')
     
     if not no_dark:
         return (yield from periodic_dark(trigger_and_wait()))
     else:
         return (yield from trigger_and_wait())
+
+
+def simple_trigger(dets, md=None, open_fs=True, close_fs=True):
+    _md = md or {}
+    @bpp.stage_decorator(dets)
+    @bpp.run_decorator(md=_md)
+    def trigger_and_wait() -> MsgGenerator:
+
+        for det in dets:
+
+            if open_fs:
+                yield from bps.mv(fs, 1)
+                print(f'\nOpen shutter to start the run....')
+
+            yield from bps.trigger(det, wait=True)
+            yield from bps.create(name='primary')
+            # yield from bps.read(det)
+            # yield from bps.read(motors[0])
+            # yield from bps.read(motors[1])
+            # yield from bps.read(motors[2])
+            ret = {}
+            reading = (yield from bps.read(det))
+            ret.update(reading)
+            print(f'{ret = }')
+            yield from bps.save()
+
+            if close_fs:
+                yield from bps.mv(fs, 0)
+                print(f'\nClose shutter to finish the run....')
+
+    yield from trigger_and_wait()
 
 
 
@@ -1070,6 +1152,12 @@ def scan_shifter_saxs(
     recover_last_scan = False,
     use_pe2c = True,
 ):
+    
+    xpd_configuration['area_det']=pe2c
+
+    print('Since using PE2, set frame_acq_time = 0.2 s')
+    glbl['frame_acq_time']=.2
+    
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
 
@@ -1195,6 +1283,218 @@ def scan_shifter_saxs(
 
 
 
+def scan_shifter_saxs2(
+    motor,
+    xmin,
+    xmax,
+    numx,
+    num_samples=0,
+    min_height=0.02,
+    min_dist=5,
+    peak_rad=1.5,
+    use_det=True,
+    abs_data = False,
+    oset_data = 0.0,
+    return_to_start = True,
+    recover_last_scan = False,
+):
+    
+    xpd_configuration['area_det']=pilatus1
+    RE(_pre_plan([pilatus1], 0.1, frame_acq_time=None))
+    
+    # print('Since using PE2, set frame_acq_time = 0.2 s')
+    # glbl['frame_acq_time']=.2
+    
+    def yn_question(q):
+        return input(q).lower().strip()[0] == "y"
+
+    init_pos = motor.position
+
+    print("")
+    if not recover_last_scan:
+        print("I'm going to move the motor: " + str(motor.name))
+        print("It's currently at position: " + str(motor.position))
+        move_coord = float(xmin) - float(motor.position)
+        if move_coord < 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm inboard from current location"
+            )
+        elif move_coord > 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm outboard from current location"
+            )
+        elif move_coord == 0:
+            print("I'm starting where I am right now :)")
+        else:
+            print("I confused")
+
+        if not yn_question("Confirm scan? [y/n] "):
+            print("Aborting operation")
+            return None
+
+        pos_list, I_list = _motor_move_scan_shifter_pos2(
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx,)
+    else:
+        print ('recovering last scan from redis...')
+        return_to_start = False
+        pos_list, I_list = retrieve_recent_shifter_scan()
+        plt.figure()
+        plt.plot(pos_list, I_list)
+
+    if len(pos_list) > 1:
+        delx = pos_list[1] - pos_list[0]
+    else:
+        print("only a single point? I'm gonna quit!")
+        return None
+
+    if return_to_start:
+        print ('returning to start position....')
+        motor.move(init_pos)
+
+
+    if oset_data != 0.0:
+        I_list = I_list - oset_data
+
+    if abs_data:
+        I_list = abs(I_list)
+
+    print("")
+    if not yn_question(
+        "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
+    ):
+        return pos_list, I_list
+    plt.close()
+
+    go_on = False
+    tmin_height = min_height
+    tmin_dist = min_dist
+    tpeak_rad = peak_rad
+    fit_attempts = 1
+
+    while not go_on:
+        print("\nI'm going to fit peaks with a min_height of " + str(tmin_height))
+        print(
+            "and min_dist [index values/real vals] of "
+            + str(tmin_dist)
+            + " / "
+            + str(tmin_dist * delx)
+        )
+        print("and I'll fit a radius between each peak-center of " + str(tpeak_rad))
+        if fit_attempts == 0:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+            )
+        else:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                open_new_plot=False,
+            )
+        fit_attempts += 1
+        # if yn_question("\nHappy with the fit? [y/n] ") == False:
+        if not go_on:
+            qans = input(
+                "\n1. Change min_height\n2. Change min_dist\n3. Change peak-fit rad\n0. Give up\n : "
+            )
+            try:
+                qans = int(qans)
+                if int(qans) == 1:
+                    tmin_height = float(input("\nWhat is the new min_height value? "))
+                if int(qans) == 2:
+                    tmin_dist = float(input("\nWhat is the new min_dist value? "))
+                if int(qans) == 3:
+                    tpeak_rad = float(input("\nWhat is the new peak_rad value? "))
+                if int(qans) == 0:
+                    print("ok, giving up")
+                    return None
+            except Exception:
+                print("what, what, whaaat?")
+        else:
+            print("Ok, great.")
+            go_on = True
+
+    return peak_cen_list
+
+
+
+def _read_pilatus_int(uid):
+    from tiled.client import from_profile
+    tiled_client = from_profile('pdf')
+    run = tiled_client[uid]
+    img = np.float32(getattr(run, 'primary').read()['pilatus-1_image'].to_numpy()[0][0])
+
+    return float(img.sum())
+
+
+def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
+    from epics import caget
+    #ensure shutter is closedi
+    print ('closing shutter')
+    # RE(mv(fs,"Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
+    I_list = np.zeros(numx)
+    dx = (xmax - xmin) / numx
+    pos_list = np.linspace(xmin, xmax, numx)
+    print ('moving to starting postion')
+    RE(mv(motor,pos_list[0]))
+    print ('opening shutter')
+    # RE(mv(fs, "Open"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 1))
+    time.sleep(1)
+    plt.ion()
+    fig1, ax1 = plt.subplots()
+    use_det = True
+    temp_pos_list = []
+    temp_I_list = []
+    for i, pos in enumerate(pos_list):
+        print("moving to " + str(pos))
+        try:
+            motor.move(pos)
+        except Exception:
+            print("well, something bad happened")
+            return None
+
+        if use_det == True:
+            uid,  = RE(simple_trigger([pilatus1], open_fs=False, close_fs=False))
+            my_int = _read_pilatus_int(uid)
+            print(f"{my_int = }")
+
+        else:
+            my_int = float(caget("XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd"))
+
+        temp_I_list.append(my_int)
+        temp_pos_list.append(pos)
+        stow_recent_shifter_scan(temp_pos_list, temp_I_list)
+
+        I_list[i] = my_int
+        ax1.scatter(pos, my_int, color="k")
+        # fig1.canvas.manager.show()
+        # fig1.canvas.flush_events()
+        plt.pause(0.01)
+
+    plt.plot(pos_list, I_list)
+    # plt.close()
+    # RE(mv(fs, "Close"))
+    # CHL revised for failed fs on 2025/05/23
+    RE(mv(fs, 0))
+    stow_recent_shifter_scan(pos_list, I_list)
+    return pos_list, I_list
+
 
 ## Output the results of scan_shifter_pos_ask() as a csv file by CHLin 2025/07/07
 def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
@@ -1271,7 +1571,7 @@ def _motor_move_scan_shifter_pos_f(motor, xmin, xmax, numx, use_pe2c=False, figu
         if use_det == True:
             my_int = float(caget("XF:28ID1-ES{Det:PE1}Stats2:Total_RBV"))
             if use_pe2c:
-                my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats5:Total_RBV"))
+                my_int = float(caget("XF:28ID1-ES{Det:PE2}Stats2:Total_RBV"))
                 time.sleep(.5)
         else:
             my_int = float(caget("XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd"))

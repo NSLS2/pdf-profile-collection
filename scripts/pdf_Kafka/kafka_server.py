@@ -124,7 +124,10 @@ def print_kafka_messages(beamline_acronym_01, beamline_acronym_02,
                     img_analyzer.save_single_pilatus()
                 else:
                     img_analyzer.save_img_perkin()
-                print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
+                    if 'pe1' in img_analyzer.run.start['detectors'][0]:
+                        print(f'\nApply mask {img_analyzer.mask_pe1c = }\n')
+                    elif 'pe2' in img_analyzer.run.start['detectors'][0]:
+                        print(f'\nApply mask {img_analyzer.mask_pe2c = }\n')
                 
             ## Plot unmasked 2D image rings with histogram
             tiff3_tuner = plotter.plot_tiff3(img_analyzer.process_img, img_analyzer.mask_array, use_mask=False, histogram=True)

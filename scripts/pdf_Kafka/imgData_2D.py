@@ -264,9 +264,9 @@ class imgData_2D(imgData_config):
         """ Assuming im2 offset by -osetx, -osety, and im3 offset by +osetx, +osety """
         
         # run = tiled_client[uid]
-        my_im3 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+        my_im1 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
         my_im2 = np.float32(getattr(self.run, self.stream_name[1]).read()[self.img_key].to_numpy()[0][0])
-        my_im1 = np.float32(getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0])
+        my_im3 = np.float32(getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0])
 
         if self.use_flat_field_pila:
             flat_field = tifffile.imread(self.flat_field_pila)
@@ -293,17 +293,26 @@ class imgData_2D(imgData_config):
 
         my_imsum = np.ones((my_im1.shape[0]+int(2*self.osetx), my_im2.shape[1]+int(2*self.osety),3))*np.nan
 
-        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im1
+        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im3
         my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_3==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
 
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1] = my_im2
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1][use_mask_2==1] = np.nan
 
-        my_imsum[int(2*self.osetx):,int(2*self.osety):,2] = my_im3
+        my_imsum[int(2*self.osetx):,int(2*self.osety):,2] = my_im1
         my_imsum[int(2*self.osetx):,int(2*self.osety):,2][use_mask_1==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
-        
-        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
+        # ## Stitching sequence for SAXS setup with lambda
+        # my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im2
+        # my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_2==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
+
+        # my_imsum[int(2*self.osetx):,:-int(2*self.osety),1] = my_im3
+        # my_imsum[int(2*self.osetx):,:-int(2*self.osety),1][use_mask_3==1] = np.nan
+
+        # my_imsum[:-int(2*self.osetx),int(2*self.osety):,2] = my_im1
+        # my_imsum[:-int(2*self.osetx),int(2*self.osety):,2][use_mask_1==1] = np.nan  ##order of mask updated by CHL on 2025/11        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
+
+        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
 
     def save_img_pilatus(self):

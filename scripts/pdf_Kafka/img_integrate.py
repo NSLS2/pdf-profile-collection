@@ -215,15 +215,15 @@ class img_integrate(imgData_2D.imgData_2D):
         
         ## Create an array to hold outlier mask
         outlier_mask_2d = np.zeros_like(i2d)     
-        # mask1 = np.array(i2d<1)*1
+        mask1 = np.array(i2d<1)*1
         
         ## Apply percentile filter along radial direction (axis=0)
         for ii, dd in enumerate(i2d.T):
             low_limit, high_limit = np.percentile(dd, (self.ll, self.ul))
             outlier_mask_2d[:,ii] = np.any([dd<low_limit, dd>high_limit, intrinsic_mask_unrolled[:,ii]], axis=0)
           
-        # outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d + mask1)
-        outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d)
+        outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d + mask1)
+        # outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d)
         
         ## calculate mean values along radial direction (axis=0) to make i1d.shape is (self.npt_rad, )
         i1d = ma.mean(outlier_mask_2d_masked, axis=0)
