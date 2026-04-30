@@ -7,6 +7,8 @@
 #linkam_T96.move(target_temp)
 ####RE(mv(linkam_T96, target_temp)) is "not working" on 2/20/2025
 
+file_loading_timer.start()
+
 
 ## Revised by CHL on 2025/09/17
 class LinkamFurnace_T96(PVPositioner):
@@ -90,3 +92,5 @@ XF:28ID1-ES{LINKAM:T96}:WATER_PUMP_TEMP
 XF:28ID1-ES{LINKAM:T96}:WATER_PUMP_VOLTAGE
 
 '''
+
+file_loading_timer.stop()

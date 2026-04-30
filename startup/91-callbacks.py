@@ -1,3 +1,5 @@
+file_loading_timer.start()
+
 from bluesky.callbacks import CallbackBase
 
 import time
@@ -386,3 +388,4 @@ data_info_keys_bgsub=[
 # 
 # RE.subscribe(bgsub_callback)
 
+file_loading_timer.stop()

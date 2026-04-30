@@ -4,6 +4,8 @@ import xpdacq.xpdacq
 import bluesky.plan_stubs as bps
 import bluesky.preprocessors as bpp
 
+file_loading_timer.start()
+
 
 def no_dark(plan):
     def plan_with_shutter():
@@ -80,7 +82,7 @@ def _configure_PE(det, exposure: float):
 
     ## Updated by CHL on 2025/11/01
     num_frame = float(np.ceil(exposure / acq_time))
-    yield from bps.mov(det.images_per_set, num_frame)
+    yield from bps.mv(det.images_per_set, num_frame)
     computed_exposure = float(num_frame * acq_time)
 
 
@@ -101,3 +103,5 @@ def _stateful_configure_ad(exposure: float):
 
 
 xpdacq.beamtime._configure_area_det = _stateful_configure_ad
+
+file_loading_timer.stop()

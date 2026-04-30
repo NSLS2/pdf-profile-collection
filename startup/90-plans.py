@@ -1,5 +1,7 @@
 # main plans
 
+file_loading_timer.start()
+
 # this was the original toy plan
 def acquisition_plan(dets, motors, fs, sample_name, images_per_set=None):
     '''
@@ -39,3 +41,5 @@ def acquisition_plan(dets, motors, fs, sample_name, images_per_set=None):
     yield from bpp.run_wrapper(myplan(), md=dict(sample_name=sample_name))
     end_time = time.time()
     print(f'Duration: {end_time - start_time:.3f} sec')
+
+file_loading_timer.stop()

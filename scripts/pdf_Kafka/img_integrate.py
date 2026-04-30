@@ -24,6 +24,11 @@ def iq_saver(fn, df, md, header=['q_A^-1', 'I(q)']):
     return num_row
 
 
+def q_to_twotheta(q_array, wavelength):
+    twotheta_radian = 2 * np.arcsin(q_array*wavelength/(4*np.pi))
+    return np.degrees(twotheta_radian)
+
+
 class img_integrate(imgData_2D.imgData_2D):
 
     def __init__(self, *args, **kwargs):
@@ -218,6 +223,7 @@ class img_integrate(imgData_2D.imgData_2D):
             outlier_mask_2d[:,ii] = np.any([dd<low_limit, dd>high_limit, intrinsic_mask_unrolled[:,ii]], axis=0)
           
         outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d + mask1)
+        # outlier_mask_2d_masked = ma.masked_array(i2d, mask=outlier_mask_2d)
         
         ## calculate mean values along radial direction (axis=0) to make i1d.shape is (self.npt_rad, )
         i1d = ma.mean(outlier_mask_2d_masked, axis=0)
@@ -227,39 +233,59 @@ class img_integrate(imgData_2D.imgData_2D):
         iq_df0['I'] = i1d
         # iq_df = iq_df0.dropna()
         iq_df = iq_df0.fillna(0)
+
+        ## export two theta data
+        iq_df1 = pd.DataFrame()
+        iq_df1['tth'] = q_to_twotheta(q1d, self.wavelength) 
+        iq_df1['I'] = i1d
+        # iq_df = iq_df0.dropna()
+        iq_df10 = iq_df1.fillna(0)
         
-        md = self.ai.getPyFAI()
+        # md = self.ai.getPyFAI()
+        md = self.ai.get_config()
         _md = {'detector': self.run.start['detectors'][0], 
                'uid':self.full_uid, 
                'time': self.run.start['time'], 
+               'wavelength': f'{self.wavelength} (A)', 
                'readable_time': self.readable_time, 
                'percentile_low_limit': self.ll, 
                'percentile_up_limit': self.ul, 
-               self.T_controller: self.temperature, 
+               self.T_controller: f'{self.temperature} {self.T_unit}', 
         }
         md.update(_md)
 
         if type(self.temperature) is float:
             md.update({'temperature': f'{self.temperature:.2f} K'})
 
+        os.makedirs(self.process_iq_dir, exist_ok=True)  # Create process_iq_dir directory if it doesn't exis
+        os.makedirs(self.process_tth_dir, exist_ok=True)  # Create process_tth_dir directory if it doesn't exis
 
         if 'pilatus' in self.detector:
-            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.iq')
+            iq_fn = os.path.join(self.process_iq_dir, f'{self.file_name_prefix}_sum.iq')
+            tth_fn = os.path.join(self.process_tth_dir, f'{self.file_name_prefix}_sum.xy')
 
         elif 'pe1' in self.detector:
             if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-                iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.iq')
+                iq_fn = os.path.join(self.process_iq_dir, f'{self.file_name_prefix}_flat.iq')
+                tth_fn = os.path.join(self.process_tth_dir, f'{self.file_name_prefix}_flat.xy')
             else:
-                iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
+                iq_fn = os.path.join(self.process_iq_dir, f'{self.file_name_prefix}_sub.iq')
+                tth_fn = os.path.join(self.process_tth_dir, f'{self.file_name_prefix}_sub.xy')
+
 
         elif 'pe2' in self.detector:
-            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_SAXS.iq')
+            iq_fn = os.path.join(self.process_iq_dir, f'{self.file_name_prefix}_SAXS.iq')
+            tth_fn = os.path.join(self.process_tth_dir, f'{self.file_name_prefix}_SAXS.xy')
 
         else:
-            iq_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.iq')
+            iq_fn = os.path.join(self.process_iq_dir, f'{self.file_name_prefix}_sub.iq')
+            tth_fn = os.path.join(self.process_tth_dir, f'{self.file_name_prefix}_sub.xy')
+
         
         ## num_row will be the number of rows of the header in saved iq data file
         self.num_rows_header = iq_saver(iq_fn, iq_df, md)
+        iq_saver(tth_fn, iq_df10, md, header=['tth', 'I(q)'])
         print(f'\n*** {os.path.basename(iq_fn)} saved!! ***\n')
+        print(f'\n*** {os.path.basename(tth_fn)} saved!! ***\n')
 
         return iq_df, iq_fn, outlier_mask_2d_masked

@@ -59,6 +59,11 @@ class imgData_2D(imgData_config):
     
 
     @property
+    def wavelength(self):
+        return self.run.start['calibration_md']['Wavelength']*(10**10)
+    
+
+    @property
     def img_key(self):
         return f'{self.detector}_image'
 
@@ -153,6 +158,12 @@ class imgData_2D(imgData_config):
 
         return T
 
+    @property
+    def T_unit(self):
+        if 'cryo' in self.T_controller:
+            return 'K'
+        else:
+            return 'C'
 
     @property
     def readable_time(self):
@@ -164,7 +175,7 @@ class imgData_2D(imgData_config):
         T = self.temperature
 
         if type(T) is float:
-            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_K'
+            return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}_{T:.0f}_{self.T_unit}'
 
         else:
             return f'{self.sample_name}_{self.readable_time}_{self.full_uid:6.6}'
@@ -176,7 +187,7 @@ class imgData_2D(imgData_config):
 
 
     @property
-    def process_dir(self):
+    def process_det_dir(self):
         if 'pilatus' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
@@ -186,12 +197,45 @@ class imgData_2D(imgData_config):
         elif 'pe2' in self.detector:
             return os.path.join(self.data_dir, f'{self.detector}')
 
+        elif 'lambda' in self.detector:
+            return os.path.join(self.data_dir, f'{self.detector}')
+
         else:
             return os.path.join(self.data_dir, 'unkown_det')
         
+
+    @property
+    def process_img_dir(self):
+        return os.path.join(self.process_det_dir, 'img')
     
 
-    def acq_mode(self, PDF_limit=0.4, SAXS_limit=2.0, ):
+    @property
+    def process_iq_dir(self):
+        return os.path.join(self.process_det_dir, 'iq')
+
+
+    @property
+    def process_tth_dir(self):
+        return os.path.join(self.process_det_dir, 'tth')
+    
+
+    # @property
+    # def process_sq_dir(self):
+    #     return os.path.join(self.process_det_dir, 'sq')
+    
+
+    # @property
+    # def process_fq_dir(self):
+    #     return os.path.join(self.process_det_dir, 'fq')
+    
+
+    # @property
+    # def process_gr_dir(self):
+    #     return os.path.join(self.process_det_dir, 'gr')
+
+
+
+    def acq_mode(self, PDF_limit=0.6, SAXS_limit=2.5, ):
 
         try:
             distance = self.run.start['calibration_md']['Distance']
@@ -220,9 +264,9 @@ class imgData_2D(imgData_config):
         """ Assuming im2 offset by -osetx, -osety, and im3 offset by +osetx, +osety """
         
         # run = tiled_client[uid]
-        my_im3 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+        my_im1 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
         my_im2 = np.float32(getattr(self.run, self.stream_name[1]).read()[self.img_key].to_numpy()[0][0])
-        my_im1 = np.float32(getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0])
+        my_im3 = np.float32(getattr(self.run, self.stream_name[2]).read()[self.img_key].to_numpy()[0][0])
 
         if self.use_flat_field_pila:
             flat_field = tifffile.imread(self.flat_field_pila)
@@ -249,27 +293,36 @@ class imgData_2D(imgData_config):
 
         my_imsum = np.ones((my_im1.shape[0]+int(2*self.osetx), my_im2.shape[1]+int(2*self.osety),3))*np.nan
 
-        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im1
+        my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im3
         my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_3==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
 
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1] = my_im2
         my_imsum[:-int(2*self.osetx),:-int(2*self.osety):,1][use_mask_2==1] = np.nan
 
-        my_imsum[int(2*self.osetx):,int(2*self.osety):,2] = my_im3
+        my_imsum[int(2*self.osetx):,int(2*self.osety):,2] = my_im1
         my_imsum[int(2*self.osetx):,int(2*self.osety):,2][use_mask_1==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
-        
-        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
+        # ## Stitching sequence for SAXS setup with lambda
+        # my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0] = my_im2
+        # my_imsum[self.osetx:-self.osetx,self.osety:-self.osety,0][use_mask_2==1] = np.nan  ##order of mask updated by CHL on 2025/11/03
+
+        # my_imsum[int(2*self.osetx):,:-int(2*self.osety),1] = my_im3
+        # my_imsum[int(2*self.osetx):,:-int(2*self.osety),1][use_mask_3==1] = np.nan
+
+        # my_imsum[:-int(2*self.osetx),int(2*self.osety):,2] = my_im1
+        # my_imsum[:-int(2*self.osetx),int(2*self.osety):,2][use_mask_1==1] = np.nan  ##order of mask updated by CHL on 2025/11        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
+
+        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
 
     def save_img_pilatus(self):
 
         self.process_img = self.sum_pilatus()
         
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
 
-        tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sum.tiff')
-        tifffile.imsave(tiff_fn, self.process_img)
+        tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sum.tiff')
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img
@@ -312,18 +365,18 @@ class imgData_2D(imgData_config):
 
             self.process_img = self.process_img / flat_field
 
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
         
         if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sub.tiff')
         
-        tifffile.imsave(tiff_fn, self.process_img)
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img
@@ -350,18 +403,18 @@ class imgData_2D(imgData_config):
 
             self.process_img = self.process_img / flat_field
 
-        os.makedirs(self.process_dir, exist_ok=True)  # Create process_dir directory if it doesn't exis
+        os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
         
         if (self.use_flat_field_pe1c) and ('pe1' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         elif (self.use_flat_field_pe2c) and ('pe2' in self.detector):
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_flat.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_flat.tiff')
         
         else:
-            tiff_fn = os.path.join(self.process_dir, f'{self.file_name_prefix}_sub.tiff')
+            tiff_fn = os.path.join(self.process_img_dir, f'{self.file_name_prefix}_sub.tiff')
         
-        tifffile.imsave(tiff_fn, self.process_img)
+        tifffile.imwrite(tiff_fn, self.process_img)
         print(f'\n*** {os.path.basename(tiff_fn)} saved!! ***\n')
 
         return self.process_img

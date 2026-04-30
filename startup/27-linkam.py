@@ -1,6 +1,8 @@
 # from ophyd.signal import DerivedSignal
 # #import inflection, textwrap, ansiwrap
 
+file_loading_timer.start()
+
 # class AtSetpoint(DerivedSignal):
 #     '''A signal that does bit-wise arithmetic on the Linkam's status code'''
 #     def __init__(self, parent_attr, *, parent=None, **kwargs):
@@ -175,3 +177,4 @@
 
 # linkam = Linkam('XF:28ID1-ES{LINKAM:T96}:', name='linkam', settle_time=0)  
 # linkam.wait_for_connection()
+file_loading_timer.stop()

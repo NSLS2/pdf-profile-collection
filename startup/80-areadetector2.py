@@ -14,6 +14,8 @@ from ophyd import StatusBase
 
 from nslsii.ad33 import StatsPluginV33
 
+file_loading_timer.start()
+
 # from shutter import sh1
 
 #shctl1 = EpicsSignal('XF:28IDC-ES:1{Det:PE1}cam1:ShutterMode', name='shctl1')
@@ -308,7 +310,7 @@ pe1.tiff.update_paths()
 #pe1.stage_sigs.pop('cam.acquire')
 
 ################
-## Disabled for startup after netowrk update 2025/10/29 chl
+# # Disabled for startup after netowrk update 2025/10/29 chl
 # pe2 = PerkinElmerStandard('XF:28ID1-ES{Det:PE2}', name='pe2', read_attrs=['tiff'])
 # pe2.tiff.update_paths()
 #################
@@ -320,7 +322,7 @@ pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
                              plugin_name='tiff')
 pe1c.tiff.update_paths()
 ################
-## Disabled for startup after netowrk update 2025/10/29 chl
+# # Disabled for startup after netowrk update 2025/10/29 chl
 # pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',
 #                             read_attrs=['tiff', 'stats1.total'],
 #                              plugin_name='tiff')
@@ -337,7 +339,7 @@ pe1c.tiff.update_paths()
 pe1c.detector_type.kind='config'
 pe1.detector_type.kind='config'
 ###################
-## Disabled for startup after netowrk update 2025/10/29 chl
+# # Disabled for startup after netowrk update 2025/10/29 chl
 # pe2c.detector_type.kind='config'
 # pe2.detector_type.kind='config'
 
@@ -399,3 +401,4 @@ class CachedDetector:
 # some defaults, as an example of how to use this
 # pe1.configure(dict(images_per_set=6, number_of_sets=10))
 
+file_loading_timer.stop()

@@ -1,6 +1,8 @@
 from ophyd import Device, Component as Cpt, EpicsSignal, EpicsSignalRO
 from ophyd import OrderedDict
 
+file_loading_timer.start()
+
 class RGA(Device):
 
     mass1 = Cpt(EpicsSignal, 'Mass:MID1-SP')
@@ -23,3 +25,5 @@ class RGA(Device):
     partial_pressure9 = Cpt(EpicsSignalRO, 'P:MID9-I')
 
 rga = RGA('XF:28ID1-ES{RGA:1}', name='rga')
+
+file_loading_timer.stop()

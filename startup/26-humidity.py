@@ -8,6 +8,8 @@
 #PV: XF:28ID1-ES{IO-E1240:1}AI:2-I
 #MOXA (E1240) channel: AI 
 
+file_loading_timer.start()
+
 flow_dry_v = EpicsSignal("XF:28ID1-ES{IO-E1241:1}AO:4-SP",name="flow_dry_v")
 flow_wet_v = EpicsSignal("XF:28ID1-ES{IO-E1241:1}AO:2-SP",name="flow_wet_v")
 humidity_v = EpicsSignal("XF:28ID1-ES{IO-E1240:1}AI:8-I",name="humidity_v")
@@ -40,3 +42,4 @@ def flow(dry,wet):
         yield from mov(flow_wet_v,wet)
  
  
+file_loading_timer.stop()
