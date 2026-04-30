@@ -1,10 +1,12 @@
 import redis, ast, json
+from nslsii.utils import open_redis_client
 
 file_loading_timer.start()
 
-redis_host = 'info.pdf.nsls2.bnl.gov'
+# redis_host = 'info.pdf.nsls2.bnl.gov'
 
-rkvs = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
+# rkvs = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
+rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", redis_port=6380, redis_ssl=True, redis_db=1)
 
 my_config = {'auto_mask': False,
     'user_mask': '/nsls2/data/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/my_mask_xrd3.npy',

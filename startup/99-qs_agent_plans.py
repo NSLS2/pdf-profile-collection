@@ -2,6 +2,7 @@ file_loading_timer.start()
 
 from confluent_kafka import Producer
 from nslsii.kafka_utils import _read_bluesky_kafka_config_file
+from nslsii.utils import open_redis_client
 import msgpack
 import json
 
@@ -60,7 +61,9 @@ def agent_directive(tla, name, doc):
 
 
 def agent_redisAware_XRDcount(position: float, *, md=None):
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
+
     #fixing motor for now
     motor = Grid_X
 
@@ -138,7 +141,8 @@ def agent_move_and_measure_hanukkah23(x, y,
     xstage = OT_stage_2_X
     ystage = OT_stage_2_Y
 
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
     
     if xpdacq_sample_num is None:
         xpdacq_sample_num = int(rkvs.get('PDF:xpdacq:sample_number').decode('utf-8')) #here is the sample num
@@ -207,7 +211,8 @@ def agent_move_and_measure_hanukkah23(x, y,
 
 ##############
 def agent_take_the_shot(xpdacq_sample_num=0, exposure=5, md=None):
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
 
     if bool(rkvs.exists('PDF:xpdacq:sample_dict')):
         p_info = rkvs.get('PDF:xpdacq:sample_dict')
@@ -243,7 +248,8 @@ def agent_take_the_shot(xpdacq_sample_num=0, exposure=5, md=None):
 ##%%%%%%%%%%%##
 
 def agent_redisAware_XRDcount_dos(md=None):
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
 
     #getting the user_config from redis
     p_my_config = rkvs.get("PDF:xpdacq:user_config:far")
@@ -285,7 +291,8 @@ def agent_redisAware_XRDcount_dos(md=None):
     
 ##%%%%%%%%####
 def agent_redisAware_PDFcount(position: float, *, md=None):
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
     #fixing motor for now
     motor = Grid_X
 
@@ -360,7 +367,8 @@ def agent_redisAware_count(position: float, *, md=None):
 
 
     #getting the user_config from redis
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
     p_my_config = rkvs.get("PDF:xpdacq:user_config")
     user_config = json.loads(p_my_config) #here is the user_config
 
@@ -397,7 +405,8 @@ def agent_redisAware_count(position: float, *, md=None):
 
 
 def agent_sample_count(motor, position: float, exposure: float, *, sample_number: int, md=None):
-    rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    # rkvs = redis.Redis(host="info.pdf.nsls2.bnl.gov", port=6379, db=0)  # redis key value store
+    rkvs = open_redis_client("xf28id1-pdf-redis1.nsls2.bnl.gov", port=6380, redis_ssl=True, redis_db=1)
     p_my_config = rkvs.get("PDF:xpdacq:user_config")
     user_config = json.loads(p_my_config)
     yield from bps.mv(motor, position)

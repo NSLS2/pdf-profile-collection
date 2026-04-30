@@ -83,7 +83,10 @@ nslsii.configure_base(
     magics=True,
     mpl=False,
     publish_documents_with_kafka=True,
-    redis_url="info.pdf.nsls2.bnl.gov"
+    # redis_url="info.pdf.nsls2.bnl.gov"
+    redis_url="xf28id1-pdf-redis1.nsls2.bnl.gov",
+    redis_port=6380,
+    redis_ssl=True
 )   
 
 
