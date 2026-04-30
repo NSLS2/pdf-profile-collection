@@ -59,7 +59,6 @@ numpy = ">2"
 [feature.terminal.tasks]
 start = "unset SESSION_MANAGER PYTHONPATH && MPLBACKEND=qtagg ipython --profile-dir=$HOME/.ipython/profile_$BS_PROFILE"
 pvs = "ipython --profile-dir=. -c 'get_pv_types(); exit()'"
-git-install-bluesky = "pip install -v git+https://github.com/bluesky/bluesky.git"
 kafka = "python /home/xf28id1/.ipython/profile_collection/scripts/pdf_Kafka/kafka_server.py pdf pdf-analysis"
 
 
