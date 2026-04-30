@@ -1,3 +1,5 @@
+file_loading_timer.start()
+
 import shutil
 config_dir = "/nsls2/data/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/"
 "Define Beamline Modes"
@@ -187,3 +189,4 @@ def HAB_Tset(t, threshold, settle_time):
 		time.sleep(0.5)
 	time.sleep(settle_time)
 '''
+file_loading_timer.stop()

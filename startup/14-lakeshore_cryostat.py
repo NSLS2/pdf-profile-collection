@@ -7,6 +7,8 @@ from ophyd import DynamicDeviceComponent as DDC
 from ophyd import DeviceStatus, OrderedDict
 
 
+file_loading_timer.start()
+
 class Lakeshore336Setpoint(PVPositioner):
     readback = Cpt(EpicsSignalRO, 'T-RB')
     setpoint = Cpt(EpicsSignal, 'T-SP')
@@ -160,3 +162,4 @@ class Lakeshore336_2(Device):
 
 lakeshore336_2 = Lakeshore336_2('XF:28ID1-ES{LS336:1' , name='lakeshore336_2')
 
+file_loading_timer.stop()

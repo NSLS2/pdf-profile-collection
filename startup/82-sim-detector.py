@@ -7,6 +7,8 @@ import numpy as np
 from ophyd.sim import SynSignal
 
 
+file_loading_timer.start()
+
 class OmniaDetector(SynSignal):
     def __init__(
         self,
@@ -102,3 +104,5 @@ def init_omnia_sim_detector():
         motor2=sim.motor2,
         motor_field2="motor2",
     )
+
+file_loading_timer.stop()

@@ -1,5 +1,7 @@
 from nslsii.temperature_controllers import Eurotherm
 
+file_loading_timer.start()
+
 ## Made by CHL on 2025/09/17
 class eurotherm3k(Eurotherm):
     def __init__(self, pv_prefix, **kwargs):
@@ -97,3 +99,4 @@ XF:28ID1-ES{ET:05}RECSEL:RBV
 XF:28ID1-ES{ET:05}RECSTAT:RBV
 '''
 
+file_loading_timer.stop()

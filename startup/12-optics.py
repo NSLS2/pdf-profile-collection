@@ -6,6 +6,8 @@ from ophyd import Signal
 from ophyd.sim import NullStatus
 
 
+file_loading_timer.start()
+
 class Slits(Device):
     top = Cpt(EpicsMotor, 'T}Mtr')
     bottom = Cpt(EpicsMotor, 'B}Mtr')
@@ -161,3 +163,5 @@ class OCMTable(Device):
  
 OCM_table = OCMTable(prefix="XF:28ID1B-ES{OCM-Ax:",
                                   name="optics_table")
+
+file_loading_timer.stop()

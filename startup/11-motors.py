@@ -5,6 +5,8 @@ from ophyd.device import DeviceStatus
 from nslsii.devices import TwoButtonShutter as _TwoButtonShutter
 #import nslsii.devices
 
+file_loading_timer.start()
+
 
 ## Created by CHL on 2025/12/08 for adding high limit(HLM), low limit(LLM), 
 ## and velocity max(VMAX) to EpicsMotor class
@@ -175,3 +177,4 @@ OT_stage_4_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X4}Mtr', name='OT_stage_4_X', labe
 
 #Det1_pin_diode = EpicsMotor('XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd', name='Pin_diode', labels=['positioners'])  #GK added on Feb12,2025
 
+file_loading_timer.stop()

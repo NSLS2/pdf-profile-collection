@@ -1,4 +1,4 @@
-
+file_loading_timer.start()
 '''
 TODO :
    ?1. finish adding all motor PV's
@@ -134,3 +134,4 @@ def temperature_distance_plan(dets, motor, fs, cryostream, sample_name, distance
 
 # example for the temp distance ramp plan
 #RE(temperature_distance_plan([pe1c], Det_1_Z, fs, cryostream, 'test sample', temperatures=[300, 305, 2], distances=[1071, 1600], images_per_set=1)
+file_loading_timer.stop()

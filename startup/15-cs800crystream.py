@@ -3,6 +3,8 @@
 
 from ophyd import Component as C
 
+file_loading_timer.start()
+
 class CS800TemperatureController(PVPositioner):
     readback = C(EpicsSignalRO, 'T-RB')
     setpoint = C(EpicsSignal, 'T:Ramp-SP')
@@ -93,3 +95,5 @@ cs800.done_value = 'Hold'
 cs800.read_attrs = ['setpoint', 'readback']
 cs800.readback.name = 'temperature'
 cs800.setpoint.name = 'temperature_setpoint'
+
+file_loading_timer.stop()

@@ -1,5 +1,7 @@
 ## Added by CHL on 2025/09/17
 
+file_loading_timer.start()
+
 import bluesky.plan_stubs as bps
 
 
@@ -45,6 +47,9 @@ def cryostat_set_temp(temp_controller = lakeshore336_2,
 ## RunEngine plan for eurotherm3504, hotairblower, linkam_T96
 def pbar_set_temp(temp_controller = eurotherm3504, ramprate = 5, setpoint = 25, tolerance=0.5):
 
+    ## for cs800 (cryostream), ramprate = 360
+    ## for eurotherm3504 (flow cell), ramprate = 5
+
     new_temp = setpoint
     T_from_sensor = temp_controller.readback
     start_T = T_from_sensor.get()
@@ -70,3 +75,5 @@ def pbar_set_temp(temp_controller = eurotherm3504, ramprate = 5, setpoint = 25, 
     status = temperature_pbar(start_T, temp_controller.setpoint.get(), T_from_sensor, tolerance, status)
         
     return status
+
+file_loading_timer.stop()
