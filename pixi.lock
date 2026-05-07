@@ -8390,7 +8390,7 @@ packages:
   sha256: f8b8b0893f866b2ff81099b45c0d7ff3d67666e962b8b5b72865993606613cb8
   requires_dist:
   - setuptools-dso>=2.7a1
-  - epicscorelibs>=7.0.10.99.0.0,<7.0.10.99.1
+  - epicscorelibs>=7.0.10.99.0.1,<7.0.10.99.1
   requires_python: '>=2.7'
 - conda: https://conda.anaconda.org/conda-forge/noarch/py-cpuinfo-9.0.0-pyhd8ed1ab_1.conda
   sha256: 6d8f03c13d085a569fde931892cded813474acbef2e03381a1a87f420c7da035
