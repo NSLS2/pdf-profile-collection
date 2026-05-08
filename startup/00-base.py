@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from bluesky.utils import ts_msg_hook
 from bluesky_queueserver import is_re_worker_active
 from bluesky.callbacks.tiled_writer import TiledWriter
-from tiled.client import from_profile
+from tiled.client import from_profile, from_uri
 import os
 from IPython import get_ipython
 from IPython.terminal.prompts import Prompts, Token
@@ -28,6 +28,8 @@ class FileLoadingTimer():
         print(f"Done loading {__file__} in {ttime.time() - self.current_time} seconds")
 
 file_loading_timer = FileLoadingTimer()
+
+
 
 # from Tom Caswell to fix the 'None bug' - whatever that is. DO 7/9/2021
 EpicsSignalBase.set_defaults(timeout=30, connection_timeout=30)
@@ -49,7 +51,9 @@ class ProposalIDPrompt(Prompts):
 ip = get_ipython()
 ip.prompts = ProposalIDPrompt(ip)
 
-tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
+# tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
+tiled_writing_client = from_uri('https://tiled.nsls2.bnl.gov', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))["pdf"]["migration"]
+tw = TiledWriter(tiled_writing_client)
 
 class TiledInserter:
     name = 'pdf'
@@ -58,7 +62,7 @@ class TiledInserter:
         error = None
         for attempt in range(ATTEMPTS):
             try:
-                tiled_writing_client.post_document(name, doc)
+                tw(name, doc)
             except Exception as exc:
                 print("Document saving failure:", repr(exc))
                 error = exc
@@ -78,6 +82,7 @@ tiled_inserter = TiledInserter()
 nslsii.configure_base(
     get_ipython().user_ns,
     tiled_inserter,
+    # None,
     pbar=True,
     bec=True,
     magics=True,

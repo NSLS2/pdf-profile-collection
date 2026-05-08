@@ -1023,7 +1023,7 @@ class Cam(AreaDetector):
 
 
 
-Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
+#Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
 
 
 def save_Cam1_tiff(is_plot=True, is_save=True):
@@ -1102,8 +1102,8 @@ class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
     pass
 
 
-Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
-            plugin_name='tiff')
+#Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
+#            plugin_name='tiff')
 
 
 # from ophyd.areadetector.trigger_mixins import SingleTrigger
