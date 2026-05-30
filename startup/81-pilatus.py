@@ -44,7 +44,10 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
         }
         if cam_dtype in type_map:
             ret[key].setdefault("dtype_str", type_map[cam_dtype])
+            ret[key].setdefault("dtype_numpy", type_map[cam_dtype])
 
+        print(f'\n{ret = }\n')
+        
         return ret
     
     def update_paths(self):

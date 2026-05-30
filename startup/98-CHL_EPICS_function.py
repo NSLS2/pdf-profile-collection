@@ -1023,7 +1023,7 @@ class Cam(AreaDetector):
 
 
 
-Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
+# Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
 
 
 def save_Cam1_tiff(is_plot=True, is_save=True):
@@ -1102,8 +1102,8 @@ class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
     pass
 
 
-Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
-            plugin_name='tiff')
+# Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
+#             plugin_name='tiff')
 
 
 # from ophyd.areadetector.trigger_mixins import SingleTrigger
@@ -1282,7 +1282,7 @@ def scan_shifter_saxs(
     return peak_cen_list
 
 
-
+## use pliatus to get sample position
 def scan_shifter_saxs2(
     motor,
     xmin,
@@ -1502,7 +1502,7 @@ def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
     df['fitting_pos'] = pos_list
 
     if save:
-        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/user_data/tiff_base'
         scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1518,7 +1518,7 @@ def scan_pos_csv(pos_list, I_list, save=True, fn_prefix=''):
     df['Intensity'] = I_list
 
     if save:
-        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
         scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1886,6 +1886,14 @@ def _identify_peaks_scan_shifter_pos_ask(
     return True, fit_peak_cen_list[::-1]  # return flipped
 
 
+
+
+def pilatus_overnight(num_peat:int =1, wait_time_sec:float =60.0):
+    for i in range(num_peat):
+        print(f'\n{i = }\n')
+        yield from scan_with_dark([pilatus1], exposure=0.1, frame_acq_time=0.1, sample_ID=0, no_dark=True)
+        yield from sleep_sec_q(wait_time_sec)
+        
 
 # data = np.reshape(Cam1.ArrayData.get(), (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(), Cam1.ArraySize0.get())
 # data = np.reshape(Cam1.ArrayData.get(), (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(),3)
