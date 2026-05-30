@@ -1502,7 +1502,7 @@ def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
     df['fitting_pos'] = pos_list
 
     if save:
-        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
         scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1518,7 +1518,7 @@ def scan_pos_csv(pos_list, I_list, save=True, fn_prefix=''):
     df['Intensity'] = I_list
 
     if save:
-        tiff_base = '/nsls2/data3/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
+        tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
         scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
