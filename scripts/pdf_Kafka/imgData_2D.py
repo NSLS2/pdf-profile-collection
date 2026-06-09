@@ -4,6 +4,7 @@ import tifffile
 from configparser import ConfigParser
 from tiled.client import from_profile
 tiled_client = from_profile('pdf')
+tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
 
 
 

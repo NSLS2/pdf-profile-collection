@@ -14,6 +14,7 @@ RE.subscribe(pub)
 '''
 
 tiled_client = from_profile('pdf')
+tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
 
 uid = '004bbfe2-11e6-4658-9ae3-75ed6019eb5d'
 

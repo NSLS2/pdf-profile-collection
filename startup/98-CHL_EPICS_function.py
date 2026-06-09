@@ -1433,6 +1433,7 @@ def scan_shifter_saxs2(
 def _read_pilatus_int(uid):
     from tiled.client import from_profile
     tiled_client = from_profile('pdf')
+    tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
     run = tiled_client[uid]
     img = np.float32(getattr(run, 'primary').read()['pilatus-1_image'].to_numpy()[0][0])
 
