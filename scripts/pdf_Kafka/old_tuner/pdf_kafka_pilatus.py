@@ -18,7 +18,9 @@ bin_ndarray = importlib.import_module("kafka_uti").bin_ndarray
 
 "--------------------------USER INPUTS------------------------------"
 tiled_client = from_profile('pdf')
+tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
 sandbox_tiled = from_uri("https://tiled.nsls2.bnl.gov/api/v1/metadata/xpd/sandbox")
+sandbox_tiled.context.http_client.headers['tiled-qos'] = 'acquisition'
 ini_config = '/home/xf28id1/.ipython/profile_collection/scripts/pdf_Kafka/pilatus_kafka_config.ini'
 k_log = kafka_log()
 
