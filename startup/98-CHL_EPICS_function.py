@@ -792,10 +792,11 @@ def scan_with_dark(dets: list,
             sample index returned in bt.list(). 
             Defaults to 0.
 
-        sample_info (dict, optional): 
-            when sample_ID is not given or found, pass sample_name and composition_string as dict here. 
-            e.g., sample_info = {'sample_name':'CeO2_quartz', 'composition_string':'CeO2'}
-            Defaults to {}.
+        sample_info (list, optional): 
+            when sample_ID is not given or found, pass sample_name and composition_string in a list here.
+            sample_name as the first, composition_string as the second
+            e.g., sample_info = ['CeO2_quartz', 'CeO2']
+            Defaults to [].
 
         md (dict, optional): 
             additional metadata.
@@ -839,7 +840,9 @@ def scan_with_dark(dets: list,
 
     ## Inject sample metadata manually from sample_info
     except (KeyError, IndexError):
-        sample_meta:dict = sample_info
+        sample_meta:dict = {}
+        sample_meta['sample_name'] = sample_info[0]
+        sample_meta['composition_string'] = sample_info[1]
 
     print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
 
@@ -891,10 +894,11 @@ def scan_pila_3pos(dets: list,
             sample index returned in bt.list(). 
             Defaults to 0.
 
-        sample_info (dict, optional): 
-            when sample_ID is not given or found, pass sample_name and composition_string as dict here. 
-            e.g., sample_info = {'sample_name':'CeO2_quartz', 'composition_string':'CeO2'}
-            Defaults to {}.
+        sample_info (list, optional): 
+            when sample_ID is not given or found, pass sample_name and composition_string in a list here.
+            sample_name as the first, composition_string as the second
+            e.g., sample_info = ['CeO2_quartz', 'CeO2']
+            Defaults to [].
 
         md (dict, optional): 
             additional metadata.
@@ -926,7 +930,9 @@ def scan_pila_3pos(dets: list,
 
     ## Inject sample metadata manually from sample_info
     except (KeyError, IndexError):
-        sample_meta:dict = sample_info
+        sample_meta:dict = {}
+        sample_meta['sample_name'] = sample_info[0]
+        sample_meta['composition_string'] = sample_info[1]
 
     print(f'\n***** sample_name = {sample_meta["sample_name"]} *****')
 
