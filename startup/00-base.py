@@ -53,6 +53,7 @@ ip.prompts = ProposalIDPrompt(ip)
 
 # tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
 tiled_writing_client = from_uri('https://tiled.nsls2.bnl.gov', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))["pdf"]["migration"]
+tiled_writing_client.context.http_client.headers['tiled-qos'] = 'acquisition'
 tw = TiledWriter(tiled_writing_client)
 
 class TiledInserter:

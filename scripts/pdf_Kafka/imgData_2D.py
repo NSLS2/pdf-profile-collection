@@ -4,6 +4,7 @@ import tifffile
 from configparser import ConfigParser
 from tiled.client import from_profile
 tiled_client = from_profile('pdf')
+tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
 
 
 
@@ -65,12 +66,15 @@ class imgData_2D(imgData_config):
 
     @property
     def img_key(self):
-        return f'{self.detector}_image'
+        data_keys = list(self.run[self.stream_name[0]].read().keys())
+        k = [key for key in data_keys if 'image' in key][0]
+        return k
+        # return f'{self.detector}_image'
 
 
-    @property
-    def stream_length(self):
-        return len(self.stream_name)
+    # @property
+    # def stream_length(self):
+    #     return len(self.stream_name)
 
     @property
     def user_data(self):
@@ -112,6 +116,22 @@ class imgData_2D(imgData_config):
     @property
     def osety(self):
         return self.getint('SUM', 'osety', fallback=27)
+    
+    @property
+    def num_positions(self):
+        return self.getint('SUM', 'num_positions', fallback=3)
+    
+    @property
+    def pixel_size(self):
+        return self.getfloat('SUM', 'pixel_size', fallback=0.172)
+    
+    @property
+    def detector_Xmotor(self):
+        return self.get('SUM', 'detector_Xmotor', fallback='Grid_X')
+    
+    @property
+    def detector_Ymotor(self):
+        return self.get('SUM', 'detector_Ymotor', fallback='Grid_Y')
     
     @property
     def use_flat_field_pila(self):
@@ -315,9 +335,101 @@ class imgData_2D(imgData_config):
         return np.nanmean(my_imsum, axis=2, dtype=np.float32)
 
 
+    def sum_pilatus2(self):
+        """ Sum the images accroding to relative detector postions"""
+
+        if self.acq_mode() == 'PDF':
+            mask_dir = self.pilatus_PDF
+
+        elif self.acq_mode() == 'XRD':
+            mask_dir = self.pilatus_XRD
+
+        else:
+            mask_dir = self.pilatus_PDF
+
+        my_im1 = np.float32(getattr(self.run, self.stream_name[0]).read()[self.img_key].to_numpy()[0][0])
+        x_size = my_im1.shape[0]  ## pixels
+        y_size = my_im1.shape[1]  ## pixels
+        my_im  = np.zeros([x_size, y_size, self.num_positions])
+
+        user_mask = np.zeros([x_size, y_size, self.num_positions])
+
+        ## Read image data, motor positions, and masks into np arrays
+        for i in range(self.num_positions):
+            ## Read detector motor positions into pos_x, pos_y
+            x = self.run[self.stream_name[i]].read()[self.detector_Xmotor[0]].to_numpy()[0]
+            y = self.run[self.stream_name[i]].read()[self.detector_Ymotor[1]].to_numpy()[0]
+            
+            ## Image xy and motor xy are reversed since python is row first which in image is y.
+            pos_x.append(float(y))
+            pos_y.append(float(x))
+            
+            ## Read different position images into zeros array
+            img =  np.float32(self.run[self.stream_name[i]].read()[self.img_key].to_numpy()[0][0])
+            my_im[:,:,i] = img
+            
+            ## Apply flat field if True
+            if self.use_flat_field_pila:
+                flat_field = tifffile.imread(self.flat_field_pila)
+                my_im[:,:,i] = img / flat_field
+
+            ## Read mask file into zeros array
+            m_path = os.path.join(mask_dir, self.masks_pos_flist[i])
+            mask = np.load(m_path)
+            user_mask[:,:,i] = mask
+
+        pos_x = np.round(pos_x, decimals=3)  ## mm
+        pos_y = np.round(pos_y, decimals=3)  ## mm
+
+        ## sort order according to the detector x position
+        sort_idx = np.argsort(pos_x)
+        sort_pos_x = pos_x[sort_idx]
+        sort_pos_y = pos_y[sort_idx]
+        sort_my_im = my_im[:,:,sort_idx]
+        sort_user_mask = user_mask[:,:,sort_idx]
+
+        ## Calculate the total offset pixel numbers in x, y
+        osetx_total = abs(round((sort_pos_x[-1]-sort_pos_x[0])/self.pixel_size))  ## pixels
+        osety_total = abs(round((sort_pos_y[-1]-sort_pos_y[0])/self.pixel_size))  ## pixels
+
+        ## Find the center positions of x, y
+        center_x = (sort_pos_x[0]+sort_pos_x[-1])/2  ## mm
+        center_y = (sort_pos_y[0]+sort_pos_y[-1])/2  ## mm
+
+        ## Define an empty array for stitch image
+        my_imsum = np.ones((x_size+osetx_total, y_size+osety_total, self.num_positions))*np.nan
+        x_sum_size = my_imsum.shape[0] ## pixels
+        y_sum_size = my_imsum.shape[1] ## pixels
+
+        ## Find the center pixel values of stitch image
+        x_sum_center = round((x_sum_size+1)/2)  ## pixel
+        y_sum_center = round((y_sum_size+1)/2)  ## pixel
+
+        ## Stitch images according to the motor positions and relative offsets
+        for i in range(self.num_positions):
+            
+            ## Find the x, y offset from center in pixel values for each motor position
+            x_offset = round((sort_pos_x[i] - center_x)/self.pixel_size)  ## pixels
+            y_offset = round((sort_pos_y[i] - center_y)/self.pixel_size)  ## pixels
+
+            ## Define the broadcast range for x
+            start_x = int(x_sum_center - x_size/2) + x_offset  ## pixel
+            end_x = int(x_sum_center + x_size/2) + x_offset    ## pixel
+
+            ## Define the broadcast range for y
+            start_y = int(y_sum_center - y_size/2) + y_offset  ## pixel
+            end_y = int(y_sum_center + y_size/2) + y_offset    ## pixel
+
+            my_imsum[start_x:end_x, start_y:end_y, i] = sort_my_im[:,:,i]
+            my_imsum[start_x:end_x, start_y:end_y, i][sort_user_mask[:,:,i]==1] = np.nan
+
+        return np.nanmean(my_imsum, axis=2, dtype=np.float32)
+
+
     def save_img_pilatus(self):
 
-        self.process_img = self.sum_pilatus()
+        # self.process_img = self.sum_pilatus()
+        self.process_img = self.sum_pilatus2()
         
         os.makedirs(self.process_img_dir, exist_ok=True)  # Create process_img_dir directory if it doesn't exis
 

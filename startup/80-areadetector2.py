@@ -310,9 +310,9 @@ pe1.tiff.update_paths()
 #pe1.stage_sigs.pop('cam.acquire')
 
 ################
-# # Disabled for startup after netowrk update 2025/10/29 chl
-# pe2 = PerkinElmerStandard('XF:28ID1-ES{Det:PE2}', name='pe2', read_attrs=['tiff'])
-# pe2.tiff.update_paths()
+# Disabled for startup after netowrk update 2025/10/29 chl
+pe2 = PerkinElmerStandard('XF:28ID1-ES{Det:PE2}', name='pe2', read_attrs=['tiff'])
+pe2.tiff.update_paths()
 #################
 
 
@@ -322,11 +322,11 @@ pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
                              plugin_name='tiff')
 pe1c.tiff.update_paths()
 ################
-# # Disabled for startup after netowrk update 2025/10/29 chl
-# pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',
-#                             read_attrs=['tiff', 'stats1.total'],
-#                              plugin_name='tiff')
-# pe2c.tiff.update_paths()
+# Disabled for startup after netowrk update 2025/10/29 chl
+pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',
+                            read_attrs=['tiff', 'stats1.total'],
+                             plugin_name='tiff')
+pe2c.tiff.update_paths()
 
 ################
 #enabled by MA during PE2 SAXS - 01/2022 and 12/09/22
@@ -339,9 +339,9 @@ pe1c.tiff.update_paths()
 pe1c.detector_type.kind='config'
 pe1.detector_type.kind='config'
 ###################
-# # Disabled for startup after netowrk update 2025/10/29 chl
-# pe2c.detector_type.kind='config'
-# pe2.detector_type.kind='config'
+# Disabled for startup after netowrk update 2025/10/29 chl
+pe2c.detector_type.kind='config'
+pe2.detector_type.kind='config'
 
 import time
 class CachedDetector:
