@@ -714,14 +714,15 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
             yield from bps.trigger(det, wait=True)
             yield from bps.create(name=stream_name)
             yield from bps.read(det)
-            yield from bps.read(motors[0])
-            yield from bps.read(motors[1])
-            yield from bps.read(motors[2])
-            # ret = {}
-            # reading = (yield from bps.read(det))
-            # yield from bps.read(Grid_X)
-            # print(f"reading = {reading}")
-            # ret.update(reading)
+
+            try: 
+                yield from bps.read(motors[0])
+                yield from bps.read(motors[1])
+                yield from bps.read(motors[2])
+
+            except IndexError:
+                print(f'\nNo Corresponding motros for the detector.')
+    
             yield from bps.save()
 
             yield from bps.mv(fs, 0)
