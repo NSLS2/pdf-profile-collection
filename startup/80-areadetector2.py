@@ -302,8 +302,8 @@ class PerkinElmerMulti(MultiTrigger, XPDPerkinElmer):
     shutter = C(EpicsSignal, 'XF:28IDC-ES:1{Sh:Exp}Cmd-Cmd')
 
 #temporary disable detector for testing -DO 11/25/19
-pe1 = PerkinElmerStandard('XF:28ID1-ES{Det:PE1}', name='pe1', read_attrs=['tiff'])
-pe1.tiff.update_paths()
+#pe1 = PerkinElmerStandard('XF:28ID1-ES{Det:PE1}', name='pe1', read_attrs=['tiff'])
+#pe1.tiff.update_paths()
 #################
 
 
@@ -317,10 +317,10 @@ pe2.tiff.update_paths()
 
 
 #temporary disable detector for PE2 testing -MA 11/25/19 and 12/09/21
-pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
-                            read_attrs=['tiff', 'stats1.total'],
-                             plugin_name='tiff')
-pe1c.tiff.update_paths()
+#pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
+#                            read_attrs=['tiff', 'stats1.total'],
+#                             plugin_name='tiff')
+#pe1c.tiff.update_paths()
 ################
 # Disabled for startup after netowrk update 2025/10/29 chl
 pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',
@@ -336,8 +336,8 @@ pe2c.tiff.update_paths()
 #################
 
 #temporary disable detector for testing -DO 7/11/19
-pe1c.detector_type.kind='config'
-pe1.detector_type.kind='config'
+#pe1c.detector_type.kind='config'
+#pe1.detector_type.kind='config'
 ###################
 # Disabled for startup after netowrk update 2025/10/29 chl
 pe2c.detector_type.kind='config'

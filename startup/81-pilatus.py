@@ -6,12 +6,14 @@ from ophyd import (SingleTrigger,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
                    ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector, 
 		           PilatusDetectorCam, StatsPlugin)
-from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite
+from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
 from ophyd.areadetector import EpicsSignalWithRBV
 
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from collections import OrderedDict
 import uuid
+from pathlib import PurePath
+
 
 file_loading_timer.start()
 
@@ -64,6 +66,12 @@ class TIFFPluginWithFileStore(TIFFPlugin, FileStoreTIFFIterativeWrite):
         self.update_paths()
         super().stage()
 
+    def _generate_resource(self, resource_kwargs):
+        updated_kwargs = resource_kwargs
+        updated_kwargs["template"] = "/%s%s_%6.6d.tiff"
+        super()._generate_resource(updated_kwargs)
+
+
 
 class PilatusDetectorCamV33(PilatusDetectorCam):
     wait_for_plugins = Cpt(EpicsSignal, 'WaitForPlugins',
@@ -114,7 +122,7 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
     tiff = Cpt(TIFFPluginWithFileStore,
                suffix='TIFF1:',
                write_path_template='',
-               root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets", )
+               root=f"/nsls2/data/pdf/proposals/{RE.md['cycle']}/{RE.md['data_session']}/assets/", )
                ## CHL changed root on 2025/09/18 in order to be consistent with base path
     
     def set_exposure_time(self, exposure_time, verbosity=3):

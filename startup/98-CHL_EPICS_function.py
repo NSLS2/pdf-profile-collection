@@ -303,18 +303,24 @@ def _configure_frame_acq_time(area_det, new_frame_acq_time):
         Adeapted from xpdacq.xpdacq_conf.configure_frame_acq_time
         by CHL 2026/03/12
     """
+
+    if hasattr(area_det, "cam"):
+        driver_io = area_det.cam
+    else:
+        driver_io = area_det.driver
+
     # stop acquisition
-    yield from bps.mv(area_det.cam.acquire, 0)
+    yield from bps.mv(driver_io.acquire, 0)
     yield from bps.sleep(1)
     
     if hasattr(area_det, 'number_of_sets'):
         yield from bps.mv(area_det.number_of_sets, 1)
     
-    yield from bps.mv(area_det.cam.acquire_time, new_frame_acq_time)
+    # yield from bps.mv(driver_io.acquire_time, new_frame_acq_time)
     
     # extra wait time for device to set
     yield from bps.sleep(1)
-    yield from bps.mv(area_det.cam.acquire, 1)
+    yield from bps.mv(driver_io.acquire, 1)
     
     print(
         "INFO: area detector has been configured to new "
@@ -338,7 +344,7 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
     ## Change frame acquisition time (not using glbl)
     if (type(frame_acq_time) is float) or (type(frame_acq_time) is int):
         for det in dets:
-            if frame_acq_time == det.cam.acquire_time.get():
+            if hasattr(det, "cam") and frame_acq_time == det.cam.acquire_time.get():
                 pass
             else:
                 yield from _configure_frame_acq_time(det, frame_acq_time)
@@ -351,6 +357,15 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
     # from xpdacq.beamtime import _configure_area_det
     for ad in (d for d in dets if hasattr(d, "cam")):
         (num_frame, acq_time, computed_exposure) = yield from _configure_area_det(exposure)
+
+    for ad in (d for d in dets if hasattr(d, "driver")):
+        if hasattr(ad, 'number_of_sets'):
+            yield from bps.mv(ad.number_of_sets, 1)
+    
+        yield from bps.mv(ad.driver.acquire_time, exposure)
+        num_frame = yield from bps.rd(ad.driver.num_images)
+        acq_time = yield from bps.rd(ad.driver.acquire_time)
+        computed_exposure = num_frame * acq_time
     # else:
     #     acq_time = 0
     #     computed_exposure = exposure
@@ -678,6 +693,10 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
     elif 'pe1' in dets[0].name:
         motors = [Det_1_X, Det_1_Y, Det_1_Z]
         motors_field = ['Det_1_X', 'Det_1_Y', 'Det_1_Z']
+
+    elif 'lambda' in dets[0].name:
+        motors = [Det_2_X, Det_2_Y, Det_2_Z]
+        motors_field = ['Det_2_X', 'Det_2_Y', 'Det_2_Z']    
     
     else:
         print(f'pilatus or pe1 not in {dets[0].name = }, set motors and motors_field to []')
@@ -714,14 +733,14 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
             yield from bps.trigger(det, wait=True)
             yield from bps.create(name=stream_name)
             yield from bps.read(det)
-            yield from bps.read(motors[0])
-            yield from bps.read(motors[1])
-            yield from bps.read(motors[2])
-            # ret = {}
-            # reading = (yield from bps.read(det))
-            # yield from bps.read(Grid_X)
-            # print(f"reading = {reading}")
-            # ret.update(reading)
+            try:
+                yield from bps.read(motors[0])
+                yield from bps.read(motors[1])
+                yield from bps.read(motors[2])
+
+            except IndexError:
+                print('\nNo corresponding motros of the detector.\n')
+
             yield from bps.save()
 
             yield from bps.mv(fs, 0)
@@ -1029,11 +1048,7 @@ class Cam(AreaDetector):
 
 
 
-<<<<<<< HEAD
-#Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
-=======
 # Cam1 = Cam('XF:28ID1-BI{Cam:1}', name='Cam1')
->>>>>>> main
 
 
 def save_Cam1_tiff(is_plot=True, is_save=True):
@@ -1112,13 +1127,8 @@ class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
     pass
 
 
-<<<<<<< HEAD
-#Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
-#            plugin_name='tiff')
-=======
 # Cam2 = Cam_2('XF:28ID1-BI{Cam:1}', name='Cam2', read_attrs=['tiff', 'stats1.total'],
 #             plugin_name='tiff')
->>>>>>> main
 
 
 # from ophyd.areadetector.trigger_mixins import SingleTrigger

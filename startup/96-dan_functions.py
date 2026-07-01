@@ -885,7 +885,7 @@ def phase_parser(phase_str):
     return composition_dict, phase_dict, composition_str
 
 
-pe1c.tiff.stage_sigs.pop(pe1c.proc.reset_filter, None)
+#pe1c.tiff.stage_sigs.pop(pe1c.proc.reset_filter, None)
 
 #for looking at data from Pilatus detector
 
