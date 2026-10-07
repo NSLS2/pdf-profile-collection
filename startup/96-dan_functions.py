@@ -402,6 +402,7 @@ def scan_shifter_pos(
     recover_last_scan = False
 ):
     ## reset frame time to 0.1 second always by CHLin on 2026/03/24
+    xpd_configuration['area_det']=pe1c
     glbl['frame_acq_time'] = 0.1
     
     def yn_question(q):
