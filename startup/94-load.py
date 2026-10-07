@@ -27,6 +27,7 @@ if xpdacq_version < (1, 1, 0):
                                 _load_beamline_config)
 
     # configure experiment device being used in current version
+    # glbl_dict is loaded from: /etc/acq/pdf.yml
     if glbl_dict['is_simulation']:
         from xpdacq.simulation import (xpd_pe1c, db, cs700, shctl1,
                                     ring_current, fb)
