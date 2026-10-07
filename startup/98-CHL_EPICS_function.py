@@ -306,16 +306,16 @@ def _configure_frame_acq_time(area_det, new_frame_acq_time):
     # stop acquisition
     yield from bps.mv(area_det.cam.acquire, 0)
     yield from bps.sleep(1)
-    
+
     if hasattr(area_det, 'number_of_sets'):
         yield from bps.mv(area_det.number_of_sets, 1)
-    
+
     yield from bps.mv(area_det.cam.acquire_time, new_frame_acq_time)
-    
+
     # extra wait time for device to set
     yield from bps.sleep(1)
     yield from bps.mv(area_det.cam.acquire, 1)
-    
+
     print(
         "INFO: area detector has been configured to new "
         "acquisition time (time per frame)  = {}s".format(new_frame_acq_time)
@@ -334,7 +334,7 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
     except (NameError, KeyError):
         pass
 
-    
+
     ## Change frame acquisition time (not using glbl)
     if (type(frame_acq_time) is float) or (type(frame_acq_time) is int):
         for det in dets:
@@ -599,17 +599,19 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
     @bpp.reset_positions_decorator([jogging_motor.velocity])
     def inner_jog(gp, motor, start, stop):
         yield from bps.mv(motor, start)  # got to initial position
-        yield from bps.mv(motor.velocity, abs(stop-start)/(exposure), timeout=1)  # set velocity
+        # yield from bps.mv(motor.velocity, abs(stop-start)/(exposure), timeout=1)  # set velocity
+        motor.velocity.put(abs(stop-start)/(exposure))
+        yield from bps.sleep(1)
         # gp = short_uid("rocker")
         yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
 
-    
+
     @bpp.stage_decorator(dets+motors)
     @bpp.run_decorator(md=_md)
     def _RE_inner(dets, motors, det_x_pos, det_y_pos):
 
         def trigger_and_wait(stream_name) -> MsgGenerator:
-            
+
             # Pass an empty list of columns to show simply ‘time’ and ‘seq_num’ (sequence number).
             # https://nsls-ii.github.io/bluesky/callbacks.html#ways-to-invoke-callbacks
             table = LiveTable(motors_field, stream_name=stream_name, )
@@ -628,9 +630,9 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
                     # ret.update(reading)
                     # return (yield from bps.save())
                     yield from bps.save()
-            
+
             yield from _inner_trigger()
-            
+
         def _trigger_3pos():
             nonlocal jogging
             for i in range(len(det_x_pos)):
@@ -674,11 +676,11 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
     if 'pilatus' in dets[0].name:
         motors = [Grid_X, Grid_Y, Grid_Z]
         motors_field = ['Grid_X', 'Grid_Y', 'Grid_Z']
-    
+
     elif 'pe1' in dets[0].name:
         motors = [Det_1_X, Det_1_Y, Det_1_Z]
         motors_field = ['Det_1_X', 'Det_1_Y', 'Det_1_Z']
-    
+
     else:
         print(f'pilatus or pe1 not in {dets[0].name = }, set motors and motors_field to []')
         motors = []
@@ -690,7 +692,8 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
     @bpp.reset_positions_decorator([jogging_motor.velocity])
     def inner_jog(gp, motor, start, stop):
         yield from bps.mv(motor, start)  # got to initial position
-        yield from bps.mv(motor.velocity, abs(stop-start)/(exposure), timeout=1)  # set velocity
+        #yield from bps.mv(motor.velocity, abs(stop-start)/(exposure), timeout=1)  # set velocity
+        motor.velocity.put(abs(stop-start)/(exposure))
         # gp = short_uid("rocker")
         yield from bps.abs_set(motor, stop, group=gp)  # set motor to move towards end
 
@@ -715,26 +718,30 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
             yield from bps.create(name=stream_name)
             yield from bps.read(det)
 
-            try: 
+            try:
                 yield from bps.read(motors[0])
                 yield from bps.read(motors[1])
                 yield from bps.read(motors[2])
 
             except IndexError:
                 print(f'\nNo Corresponding motros for the detector.')
-    
+
             yield from bps.save()
 
             yield from bps.mv(fs, 0)
             print(f'\nClose shutter to finish the run....')
-    
+
+            ## reset frame acquisition time to 0.1 sec for pe detectors
+            if "pe" in det.name:
+                yield from _pre_plan([det], 5.0, frame_acq_time=0.1)
+
     if not no_dark:
         return (yield from periodic_dark(trigger_and_wait()))
     else:
         return (yield from trigger_and_wait())
 
 
-def simple_trigger(dets, md=None, open_fs=True, close_fs=True):
+def simple_trigger(dets, md=None, save_run=True, open_fs=True, close_fs=True):
     _md = md or {}
     @bpp.stage_decorator(dets)
     @bpp.run_decorator(md=_md)
@@ -752,11 +759,33 @@ def simple_trigger(dets, md=None, open_fs=True, close_fs=True):
             # yield from bps.read(motors[0])
             # yield from bps.read(motors[1])
             # yield from bps.read(motors[2])
-            ret = {}
-            reading = (yield from bps.read(det))
-            ret.update(reading)
-            print(f'{ret = }')
-            yield from bps.save()
+
+            if save_run:
+                ret = {}
+                reading = (yield from bps.read(det))
+                ret.update(reading)
+                print(f'{ret = }')
+                yield from bps.save()
+
+            if close_fs:
+                yield from bps.mv(fs, 0)
+                print(f'\nClose shutter to finish the run....')
+
+    yield from trigger_and_wait()
+
+
+
+def just_trigger(dets, wait=True, open_fs=False, close_fs=False):
+    @bpp.stage_decorator(dets)
+    def trigger_and_wait() -> MsgGenerator:
+
+        for det in dets:
+
+            if open_fs:
+                yield from bps.mv(fs, 1)
+                print(f'\nOpen shutter to start the run....')
+
+            yield from bps.trigger(det, wait=wait)
 
             if close_fs:
                 yield from bps.mv(fs, 0)
@@ -768,63 +797,63 @@ def simple_trigger(dets, md=None, open_fs=True, close_fs=True):
 
 from xpdacq.xpdacq import _inject_qualified_dark_frame_uid, _inject_calibration_md, _inject_analysis_stage
 
-def scan_with_dark(dets: list, 
-                   exposure: float=0.1, 
-                   sample_ID: int=0, 
-                   sample_info: dict={}, 
-                   md: dict={}, 
-                   stream_name: str='primary', 
-                   no_dark: bool=False, 
-                   jogging:list=[], 
-                   frame_acq_time: float=0.1, 
+def scan_with_dark(dets: list,
+                   exposure: float=0.1,
+                   sample_ID: int=0,
+                   sample_info: dict={},
+                   md: dict={},
+                   stream_name: str='primary',
+                   no_dark: bool=False,
+                   jogging:list=[],
+                   frame_acq_time: float=0.1,
                    user_config: dict={},
                    ):
     """Take a scan with an aera detector for PDF or XRD
 
     Args:
-        dets (list): 
+        dets (list):
             list of detector ophyd object, e.g., [piatus1] or [pe1c]
 
-        exposure (float, optional): 
-            total exposure (measurement) time in seconds.  
+        exposure (float, optional):
+            total exposure (measurement) time in seconds.
             Defaults to 0.1.
 
-        sample_ID (int, optional): 
-            sample index returned in bt.list(). 
+        sample_ID (int, optional):
+            sample index returned in bt.list().
             Defaults to 0.
 
-        sample_info (list, optional): 
+        sample_info (list, optional):
             when sample_ID is not given or found, pass sample_name and composition_string in a list here.
             sample_name as the first, composition_string as the second
             e.g., sample_info = ['CeO2_quartz', 'CeO2']
             Defaults to [].
 
-        md (dict, optional): 
+        md (dict, optional):
             additional metadata.
-            e.g., md = {'note':'dummy test'} 
+            e.g., md = {'note':'dummy test'}
             Defaults to {}.
 
-        stream_name (str, optional): 
+        stream_name (str, optional):
             stream name in the event document, 'primary' is recommended.
             Defaults to 'primary'.
 
-        no_dark (bool, optional): 
-            if no_dark = True, the dark scan will be skipped, especially for pilatus. 
+        no_dark (bool, optional):
+            if no_dark = True, the dark scan will be skipped, especially for pilatus.
             Defaults to False.
 
-        jogging (list, optional): 
+        jogging (list, optional):
             If jogging, three elemetns needs to be defined as [jog_motor, start, stop].
             e.g.,  jogging = [OT_stage_2_X, 0.5, 3.7]
             Defaults to [].
 
-        frame_acq_time (float, optional): 
-            Change frame acquistion time if needed, only for pe1c. 
+        frame_acq_time (float, optional):
+            Change frame acquistion time if needed, only for pe1c.
             Defaults to 0.1.
 
-        user_config (dict, optional): 
+        user_config (dict, optional):
             Pass self-defined configuration info to pdfstream.
             e.g.,  user_config = {'auto_mask': False, 'qmaxinst':28, 'qmax':28.0, 'rpoly':0.7,
-                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',    
+                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',
                     'method': 'splitpixel'}
             Defaults to {}.
 
@@ -857,13 +886,13 @@ def scan_with_dark(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = trigger_areaDet(dets, exposure, stream_name, md, no_dark, 
-                                 jogging=jogging, frame_acq_time=frame_acq_time, 
+    grand_plan = trigger_areaDet(dets, exposure, stream_name, md, no_dark,
+                                 jogging=jogging, frame_acq_time=frame_acq_time,
                                  user_config=user_config)
-    
+
     if not no_dark:
         grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
-    
+
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_analysis_stage)
     return (yield from grand_plan)
@@ -872,49 +901,49 @@ def scan_with_dark(dets: list,
 
 
 ## Updated by CHLin on 2025/11/18
-def scan_pila_3pos(dets: list, 
-                   exposure: float=0.1, 
-                   sample_ID: int=0, 
-                   sample_info: dict={}, 
-                   md: dict={}, 
-                   jogging: list=[], 
-                   user_config: dict={}, 
+def scan_pila_3pos(dets: list,
+                   exposure: float=0.1,
+                   sample_ID: int=0,
+                   sample_info: dict={},
+                   md: dict={},
+                   jogging: list=[],
+                   user_config: dict={},
                    ):
-    
+
     """Take 3 scans at 3 different dectecto positions for PDF or XRD, especially for pilatus
 
     Args:
-        dets (list): 
+        dets (list):
             list of detector ophyd object, e.g., [piatus1] or [pe1c]
 
-        exposure (float, optional): 
+        exposure (float, optional):
             total exposure (measurement) time in seconds.
             Defaults to 0.1.
 
-        sample_ID (int, optional): 
-            sample index returned in bt.list(). 
+        sample_ID (int, optional):
+            sample index returned in bt.list().
             Defaults to 0.
 
-        sample_info (list, optional): 
+        sample_info (list, optional):
             when sample_ID is not given or found, pass sample_name and composition_string in a list here.
             sample_name as the first, composition_string as the second
             e.g., sample_info = ['CeO2_quartz', 'CeO2']
             Defaults to [].
 
-        md (dict, optional): 
+        md (dict, optional):
             additional metadata.
-            e.g., md = {'note':'dummy test'} 
+            e.g., md = {'note':'dummy test'}
             Defaults to {}.
 
-        jogging (list, optional): 
+        jogging (list, optional):
             If jogging, three elemetns needs to be defined as [jog_motor, start, stop].
             e.g.,  jogging = [OT_stage_2_X, 0.5, 3.7]
             Defaults to [].
 
-        user_config (dict, optional): 
+        user_config (dict, optional):
             Pass self-defined configuration info to pdfstream.
             e.g.,  user_config = {'auto_mask': False, 'qmaxinst':28, 'qmax':28.0, 'rpoly':0.7,
-                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',    
+                    'user_mask': '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/config_base/Mask.npy',
                     'method': 'splitpixel'}
             Defaults to {}.
 
@@ -947,7 +976,7 @@ def scan_pila_3pos(dets: list,
     md.update(sample_meta)
 
     ## while passing plan as a generator, no need to add "yield from"
-    grand_plan = tirgger_pila_3pos(dets, exposure, md, 
+    grand_plan = tirgger_pila_3pos(dets, exposure, md,
                                    jogging=jogging, user_config=user_config)
     # grand_plan = bpp.msg_mutator(grand_plan, _inject_qualified_dark_frame_uid)
     grand_plan = bpp.msg_mutator(grand_plan, _inject_calibration_md)
@@ -1159,12 +1188,12 @@ def scan_shifter_saxs(
     recover_last_scan = False,
     use_pe2c = True,
 ):
-    
+
     xpd_configuration['area_det']=pe2c
 
     print('Since using PE2, set frame_acq_time = 0.2 s')
     glbl['frame_acq_time']=.2
-    
+
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
 
@@ -1305,13 +1334,13 @@ def scan_shifter_saxs2(
     return_to_start = True,
     recover_last_scan = False,
 ):
-    
+
     xpd_configuration['area_det']=pilatus1
     RE(_pre_plan([pilatus1], 0.1, frame_acq_time=None))
-    
+
     # print('Since using PE2, set frame_acq_time = 0.2 s')
     # glbl['frame_acq_time']=.2
-    
+
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
 
@@ -1505,13 +1534,13 @@ def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
 
 
 ## Output the results of scan_shifter_pos_ask() as a csv file by CHLin 2025/07/07
-def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
+def fitting_pos_csv(pos_list, save=True, fn_prefix='', save_dir=''):
     df = pd.DataFrame()
     df['fitting_pos'] = pos_list
 
     if save:
         tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/user_data/tiff_base'
-        scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
+        scan_shifter_dir = os.path.join(tiff_base, save_dir, 'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         fn = os.path.join(scan_shifter_dir, fn_prefix+'_'+f'{time_stamp}')
@@ -1520,18 +1549,20 @@ def fitting_pos_csv(pos_list, save=True, fn_prefix=''):
     return df
 
 
-def scan_pos_csv(pos_list, I_list, save=True, fn_prefix=''):
+def scan_pos_csv(pos_list, I_list, save=True, fn_prefix='', save_dir=''):
     df = pd.DataFrame()
+
     df['Stage_position'] = pos_list
     df['Intensity'] = I_list
 
     if save:
         tiff_base = '/nsls2/auto-storage/pdf/pdfhack/legacy/processed/xpdacq_data/user_data/tiff_base'
-        scan_shifter_dir = os.path.join(tiff_base, 'scan_shifter_pos')
+        scan_shifter_dir = os.path.join(tiff_base, save_dir,'scan_shifter_pos')
         os.makedirs(scan_shifter_dir, exist_ok=True)
         time_stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         fn = os.path.join(scan_shifter_dir, fn_prefix+'_'+f'{time_stamp}')
-        df.to_csv(fn, sep=' ', index=False, float_format='{:.5e}'.format)
+        df.to_csv(fn, sep=' ', index=False, float_format='{:.5e}'.format) # produce the error 'No module named 'pandas.io.formats.csvs'' - changed as belowMA
+        #df.to_csv(fn, sep='\t', index=False, float_format='{:.5e}'.format) 
 
     return df
 
@@ -1778,6 +1809,183 @@ def scan_shifter_pos_ask(
     return pos_list, I_list, peak_cen_list
 
 
+## A revision to disable human interaction by CHLin 2025/07/07
+def scan_shifter_pos_ask2(
+    motor,
+    xmin,
+    xmax,
+    numx,
+    min_height=0.02,
+    min_dist=5,
+    peak_rad=1.5,
+    use_det=True,
+    abs_data = False,
+    flip_data = False,
+    oset_data = 0.0,
+    return_to_start = True,
+    recover_last_scan = False,
+    need_interaction = False,
+    go_to_fitting = False,
+    ):
+
+    def yn_question(q):
+        return input(q).lower().strip()[0] == "y"
+
+    init_pos = motor.position
+
+    import matplotlib.pyplot as plt
+    ## Create two plt.figure objects for plotting scaaning and fitting figures
+    ## Added by CHL on 2025/09/23
+    plt.ion()
+    f_fitting = plt.figure('Fitting')
+    ax = f_fitting.gca()
+    plt.cla()
+    f_fitting.canvas.draw_idle()
+    # f_fitting.canvas.manager.show()
+    # f_fitting.canvas.flush_events()
+
+    f_scanning = plt.figure('Scanning')
+
+
+    print("")
+    if not recover_last_scan:
+        print("I'm going to move the motor: " + str(motor.name))
+        print("It's currently at position: " + str(motor.position))
+        move_coord = float(xmin) - float(motor.position)
+        if move_coord < 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm inboard from current location"
+            )
+        elif move_coord > 0:
+            print(
+                "So I will start by moving "
+                + str(abs(move_coord))[:4]
+                + " mm outboard from current location"
+            )
+        elif move_coord == 0:
+            print("I'm starting where I am right now :)")
+        else:
+            print("I confused")
+
+        # add need_interaction by CHLin on 2025/07/07
+        if need_interaction:
+            if not yn_question("Confirm scan? [y/n] "):
+                print("Aborting operation")
+                return None
+
+        pos_list, I_list = _motor_move_scan_shifter_pos_f(
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx, figure=f_scanning)
+    else:
+        print ('recovering last scan from redis...')
+        return_to_start = False
+        pos_list, I_list = retrieve_recent_shifter_scan()
+        plt.figure()
+        plt.plot(pos_list, I_list)
+
+    if len(pos_list) > 1:
+        delx = pos_list[1] - pos_list[0]
+    else:
+        print("only a single point? I'm gonna quit!")
+        return None
+
+    if return_to_start:
+        print ('returning to start position....')
+        motor.move(init_pos)
+
+
+    if oset_data != 0.0:
+        I_list = I_list - oset_data
+
+    if abs_data:
+        I_list = abs(I_list)
+
+    if flip_data:
+        I_list = -(I_list)
+
+    print("")
+    # add need_interaction by CHLin on 2025/07/07
+    if need_interaction:
+        if not yn_question(
+            "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
+        ):
+            return pos_list, I_list
+    
+    return pos_list, I_list
+
+    # plt.close()
+
+    go_on = False
+    tmin_height = min_height
+    tmin_dist = min_dist
+    tpeak_rad = peak_rad
+    fit_attempts = 1
+
+    if go_to_fitting:
+        print("\nI'm going to fit peaks with a min_height of " + str(tmin_height))
+        print(
+            "and min_dist [index values/real vals] of "
+            + str(tmin_dist)
+            + " / "
+            + str(tmin_dist * delx)
+        )
+        print("and I'll fit a radius between each peak-center of " + str(tpeak_rad))
+        if fit_attempts == 0:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                need_interaction = need_interaction,
+                open_new_plot=False,
+                figure=f_fitting,
+
+            )
+        else:
+            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
+                pos_list,
+                I_list,
+                num_samples=num_samples,
+                min_height=tmin_height,
+                min_dist=tmin_dist,
+                peak_rad=tpeak_rad,
+                open_new_plot=False,
+                need_interaction = need_interaction,
+                figure=f_fitting,
+            )
+        f_fitting.canvas.draw_idle()
+        fit_attempts += 1
+        # if yn_question("\nHappy with the fit? [y/n] ") == False:
+
+        # add need_interaction by CHLin on 2025/07/07
+        if need_interaction:
+            if not go_on:
+                qans = input(
+                    "\n1. Change min_height\n2. Change min_dist\n3. Change peak-fit rad\n0. Give up\n : "
+                )
+                try:
+                    qans = int(qans)
+                    if int(qans) == 1:
+                        tmin_height = float(input("\nWhat is the new min_height value? "))
+                    if int(qans) == 2:
+                        tmin_dist = float(input("\nWhat is the new min_dist value? "))
+                    if int(qans) == 3:
+                        tpeak_rad = float(input("\nWhat is the new peak_rad value? "))
+                    if int(qans) == 0:
+                        print("ok, giving up")
+                        return None
+                except Exception:
+                    print("what, what, whaaat?")
+            else:
+                print("Ok, great.")
+                go_on = True
+
+        return pos_list, I_list, peak_cen_list
+
+
 ## A revision for output sample position as a csv file by CHLin 2025/07/07
 ## Modificaiton: remove human intercaation
 def _identify_peaks_scan_shifter_pos_ask(
@@ -1901,7 +2109,7 @@ def pilatus_overnight(num_peat:int =1, wait_time_sec:float =60.0):
         print(f'\n{i = }\n')
         yield from scan_with_dark([pilatus1], exposure=0.1, frame_acq_time=0.1, sample_ID=0, no_dark=True)
         yield from sleep_sec_q(wait_time_sec)
-        
+
 
 # data = np.reshape(Cam1.ArrayData.get(), (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(), Cam1.ArraySize0.get())
 # data = np.reshape(Cam1.ArrayData.get(), (Cam1.ArraySize2.get(), Cam1.ArraySize1.get(),3)
