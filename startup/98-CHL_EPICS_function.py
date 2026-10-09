@@ -1171,7 +1171,8 @@ class Cam_2(ContinuousAcquisitionTrigger, PDFCam1):
 
 
 
-
+## use pe2c to find sample position at SAXS mode
+## tested, doesn't work.
 def scan_shifter_saxs(
     motor,
     xmin,
@@ -1319,6 +1320,14 @@ def scan_shifter_saxs(
 
 
 ## use pliatus to get sample position
+##TODO: use epics-base to retrive total counts from Pilatus
+## https://github.com/epics-base/p4p
+'''
+from p4p.client.thread import Context
+ctx = Context('pva')
+pilatus_frame_PV = "XF:28ID1-ES{Det:Pilatus}Pva1:Image"
+frame = ctx.get(pilatus_frame_PV)
+'''
 def scan_shifter_saxs2(
     motor,
     xmin,
@@ -1642,6 +1651,7 @@ def scan_shifter_pos_ask(
     numx,
     num_samples=0,
     min_height=0.02,
+    prominence=0.02,
     min_dist=5,
     peak_rad=1.5,
     use_det=True,
@@ -1760,6 +1770,7 @@ def scan_shifter_pos_ask(
                 I_list,
                 num_samples=num_samples,
                 min_height=tmin_height,
+                prominence=prominence,
                 min_dist=tmin_dist,
                 peak_rad=tpeak_rad,
                 need_interaction = need_interaction,
@@ -1773,6 +1784,7 @@ def scan_shifter_pos_ask(
                 I_list,
                 num_samples=num_samples,
                 min_height=tmin_height,
+                prominence=prominence,
                 min_dist=tmin_dist,
                 peak_rad=tpeak_rad,
                 open_new_plot=False,
@@ -1809,189 +1821,21 @@ def scan_shifter_pos_ask(
     return pos_list, I_list, peak_cen_list
 
 
-## A revision to disable human interaction by CHLin 2025/07/07
-def scan_shifter_pos_ask2(
-    motor,
-    xmin,
-    xmax,
-    numx,
-    min_height=0.02,
-    min_dist=5,
-    peak_rad=1.5,
-    use_det=True,
-    abs_data = False,
-    flip_data = False,
-    oset_data = 0.0,
-    return_to_start = True,
-    recover_last_scan = False,
-    need_interaction = False,
-    go_to_fitting = False,
-    ):
-
-    def yn_question(q):
-        return input(q).lower().strip()[0] == "y"
-
-    init_pos = motor.position
-
-    import matplotlib.pyplot as plt
-    ## Create two plt.figure objects for plotting scaaning and fitting figures
-    ## Added by CHL on 2025/09/23
-    plt.ion()
-    f_fitting = plt.figure('Fitting')
-    ax = f_fitting.gca()
-    plt.cla()
-    f_fitting.canvas.draw_idle()
-    # f_fitting.canvas.manager.show()
-    # f_fitting.canvas.flush_events()
-
-    f_scanning = plt.figure('Scanning')
-
-
-    print("")
-    if not recover_last_scan:
-        print("I'm going to move the motor: " + str(motor.name))
-        print("It's currently at position: " + str(motor.position))
-        move_coord = float(xmin) - float(motor.position)
-        if move_coord < 0:
-            print(
-                "So I will start by moving "
-                + str(abs(move_coord))[:4]
-                + " mm inboard from current location"
-            )
-        elif move_coord > 0:
-            print(
-                "So I will start by moving "
-                + str(abs(move_coord))[:4]
-                + " mm outboard from current location"
-            )
-        elif move_coord == 0:
-            print("I'm starting where I am right now :)")
-        else:
-            print("I confused")
-
-        # add need_interaction by CHLin on 2025/07/07
-        if need_interaction:
-            if not yn_question("Confirm scan? [y/n] "):
-                print("Aborting operation")
-                return None
-
-        pos_list, I_list = _motor_move_scan_shifter_pos_f(
-            motor=motor, xmin=xmin, xmax=xmax, numx=numx, figure=f_scanning)
-    else:
-        print ('recovering last scan from redis...')
-        return_to_start = False
-        pos_list, I_list = retrieve_recent_shifter_scan()
-        plt.figure()
-        plt.plot(pos_list, I_list)
-
-    if len(pos_list) > 1:
-        delx = pos_list[1] - pos_list[0]
-    else:
-        print("only a single point? I'm gonna quit!")
-        return None
-
-    if return_to_start:
-        print ('returning to start position....')
-        motor.move(init_pos)
-
-
-    if oset_data != 0.0:
-        I_list = I_list - oset_data
-
-    if abs_data:
-        I_list = abs(I_list)
-
-    if flip_data:
-        I_list = -(I_list)
-
-    print("")
-    # add need_interaction by CHLin on 2025/07/07
-    if need_interaction:
-        if not yn_question(
-            "Move on to fitting? (if not, I'll return [pos_list, I_list]) [y/n] "
-        ):
-            return pos_list, I_list
-    
-    return pos_list, I_list
-
-    # plt.close()
-
-    go_on = False
-    tmin_height = min_height
-    tmin_dist = min_dist
-    tpeak_rad = peak_rad
-    fit_attempts = 1
-
-    if go_to_fitting:
-        print("\nI'm going to fit peaks with a min_height of " + str(tmin_height))
-        print(
-            "and min_dist [index values/real vals] of "
-            + str(tmin_dist)
-            + " / "
-            + str(tmin_dist * delx)
-        )
-        print("and I'll fit a radius between each peak-center of " + str(tpeak_rad))
-        if fit_attempts == 0:
-            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
-                pos_list,
-                I_list,
-                num_samples=num_samples,
-                min_height=tmin_height,
-                min_dist=tmin_dist,
-                peak_rad=tpeak_rad,
-                need_interaction = need_interaction,
-                open_new_plot=False,
-                figure=f_fitting,
-
-            )
-        else:
-            go_on, peak_cen_list = _identify_peaks_scan_shifter_pos_ask(
-                pos_list,
-                I_list,
-                num_samples=num_samples,
-                min_height=tmin_height,
-                min_dist=tmin_dist,
-                peak_rad=tpeak_rad,
-                open_new_plot=False,
-                need_interaction = need_interaction,
-                figure=f_fitting,
-            )
-        f_fitting.canvas.draw_idle()
-        fit_attempts += 1
-        # if yn_question("\nHappy with the fit? [y/n] ") == False:
-
-        # add need_interaction by CHLin on 2025/07/07
-        if need_interaction:
-            if not go_on:
-                qans = input(
-                    "\n1. Change min_height\n2. Change min_dist\n3. Change peak-fit rad\n0. Give up\n : "
-                )
-                try:
-                    qans = int(qans)
-                    if int(qans) == 1:
-                        tmin_height = float(input("\nWhat is the new min_height value? "))
-                    if int(qans) == 2:
-                        tmin_dist = float(input("\nWhat is the new min_dist value? "))
-                    if int(qans) == 3:
-                        tpeak_rad = float(input("\nWhat is the new peak_rad value? "))
-                    if int(qans) == 0:
-                        print("ok, giving up")
-                        return None
-                except Exception:
-                    print("what, what, whaaat?")
-            else:
-                print("Ok, great.")
-                go_on = True
-
-        return pos_list, I_list, peak_cen_list
-
 
 ## A revision for output sample position as a csv file by CHLin 2025/07/07
 ## Modificaiton: remove human intercaation
 def _identify_peaks_scan_shifter_pos_ask(
-    x, y, num_samples=0, min_height=0.02, min_dist=5, peak_rad=1.5, open_new_plot=True,
-    need_interaction = False, figure=None,
-):
+        x, 
+        y, 
+        num_samples=0, 
+        min_height=0.02, 
+        prominence=0.02, 
+        min_dist=5, 
+        peak_rad=1.5, 
+        open_new_plot=True, 
+        need_interaction = False, 
+        figure=None, 
+        ):
     from scipy.signal import find_peaks
     import matplotlib.pyplot as plt
     from scipy.optimize import curve_fit
@@ -2036,7 +1880,7 @@ def _identify_peaks_scan_shifter_pos_ask(
 
     # initial guess of position peaks
     print("finding things")
-    peaks, _ = find_peaks(y, height=min_height, distance=min_dist)
+    peaks, _ = find_peaks(y, height=min_height, distance=min_dist, prominence=prominence)
 
     if num_samples == 0:
         print("I found " + str(len(peaks)) + " peaks.")
