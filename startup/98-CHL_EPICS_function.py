@@ -16,6 +16,11 @@ from bluesky.utils import short_uid, MsgGenerator, plan
 import datetime
 import os
 
+try:
+    from ophyd_async.core import TriggerInfo 
+except ModuleNotFoundError:
+    pass
+
 ## disable live plots
 bec.disable_plots()
 
@@ -346,8 +351,8 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
         for det in dets:
             if hasattr(det, "cam") and frame_acq_time == det.cam.acquire_time.get():
                 pass
-            else:
-                yield from _configure_frame_acq_time(det, frame_acq_time)
+            # else:
+            #     yield from _configure_frame_acq_time(det, frame_acq_time)
 
 
     # if 'pilatus1' not in dets[0].name:
@@ -361,8 +366,9 @@ def _pre_plan(dets, exposure, frame_acq_time=None):
     for ad in (d for d in dets if hasattr(d, "driver")):
         if hasattr(ad, 'number_of_sets'):
             yield from bps.mv(ad.number_of_sets, 1)
-    
+
         yield from bps.mv(ad.driver.acquire_time, exposure)
+        yield from bps.mv(ad.driver.acquire_period, exposure)
         num_frame = yield from bps.rd(ad.driver.num_images)
         acq_time = yield from bps.rd(ad.driver.acquire_time)
         computed_exposure = num_frame * acq_time
@@ -727,6 +733,9 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
                 gp = short_uid("rocker")
                 yield from inner_jog(gp, motor=jogging[0], start=jogging[1], stop=jogging[2])
 
+            if det.name is "lambda1":
+                trigger_info = TriggerInfo(livetime=exposure,)
+                yield from bps.prepare(det, trigger_info, wait=True)
             yield from bps.mv(fs, 1)
             print(f'\nOpen shutter to start the run....')
 
