@@ -175,6 +175,11 @@ Bstop_TBL_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X3}Mtr', name='OT_stage_3_X', label
 OT_stage_4_X = EpicsMotor('XF:28ID1-ES{Det-Ax:X4}Mtr', name='OT_stage_4_X', labels=['positioners'])
 
 
+# Beamstopper in SAXS tube, defined by CHL 10/22/2026
+saxs_bs_x = EpicsMotor('XF:28ID1B-ES{BS:SAXS-Ax:X}Mtr', name='saxs_bs_x')
+saxs_bs_y = EpicsMotor('XF:28ID1B-ES{BS:SAXS-Ax:Y}Mtr', name='saxs_bs_y')
+
+
 #Det1_pin_diode = EpicsMotor('XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd', name='Pin_diode', labels=['positioners'])  #GK added on Feb12,2025
 
 file_loading_timer.stop()
