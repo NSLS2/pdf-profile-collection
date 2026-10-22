@@ -4,11 +4,12 @@ import matplotlib.pyplot
 import nslsii
 import time as ttime
 import matplotlib.pyplot as plt
+import warnings
 
 from bluesky.utils import ts_msg_hook
 from bluesky_queueserver import is_re_worker_active
 from bluesky.callbacks.tiled_writer import TiledWriter
-from tiled.client import from_profile
+from tiled.client import from_profile, from_uri
 import os
 from IPython import get_ipython
 from IPython.terminal.prompts import Prompts, Token
@@ -49,8 +50,21 @@ class ProposalIDPrompt(Prompts):
 ip = get_ipython()
 ip.prompts = ProposalIDPrompt(ip)
 
-tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
-tiled_writing_client.context.http_client.headers['tiled-qos'] = 'acquisition'
+# tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
+# tiled_writing_client.context.http_client.headers['tiled-qos'] = 'acquisition'
+
+local_tiled = os.environ.get("PDF_USE_LOCAL_TILED", "false").lower() == "true"
+
+if not local_tiled:
+    tiled_writing_client = from_profile('pdf', api_key=os.getenv("TILED_BLUESKY_WRITING_API_KEY_PDF", ""))
+    tiled_writing_client.context.http_client.headers['tiled-qos'] = 'acquisition'
+elif local_tiled:
+    warnings.warn(f"\033[91mNOW USING LOCAL TILED - unset PDF_USE_LOCAL_TILED to use production tiled\033[0m")
+    from tiled.server.simple import SimpleTiledServer
+
+    t_serv = SimpleTiledServer()
+    tiled_writing_client = from_uri(t_serv.uri)
+    tiled_reading_client = c = from_uri(t_serv.uri)
 
 class TiledInserter:
     name = 'pdf'
@@ -83,7 +97,7 @@ nslsii.configure_base(
     bec=True,
     magics=True,
     mpl=False,
-    publish_documents_with_kafka=True,
+    publish_documents_with_kafka=False,
     # redis_url="info.pdf.nsls2.bnl.gov"
     redis_url="xf28id1-pdf-redis1.nsls2.bnl.gov",
     redis_port=6380,
