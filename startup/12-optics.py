@@ -74,11 +74,7 @@ class PDFFastShutter(Device):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.st = None
-<<<<<<< HEAD
-        # TODO: ask CJ to change it downstream to only accept the 'Open' or 'Close' strings (no numbers please!).
-=======
         # # TODO: ask CJ to change it downstream to only accept the 'Open' or 'Close' strings (no numbers please!).
->>>>>>> 35497a121b17c8298c5426a937a510ae0f53bc65
         self.setmap = {'Open': 0, 'Close': 1,
                        1: 0, 0: 1}  # MR: this is an inversed logic on the xpdacq side
         self.readmap = {0: 'Open', 1: 'Close'}
