@@ -8,7 +8,7 @@ from nslsii.devices import TwoButtonShutter as _TwoButtonShutter
 file_loading_timer.start()
 
 
-## Created by CHL on 2025/12/08 for adding high limit(HLM), low limit(LLM), 
+## Created by CHL on 2025/12/08 for adding high limit(HLM), low limit(LLM),
 ## and velocity max(VMAX) to EpicsMotor class
 class xf28id1_Motor(EpicsMotor):
 
@@ -25,8 +25,8 @@ OT_stage_1_Y = xf28id1_Motor('XF:28ID1B-ES{Stg:FTIR-Ax:Y}Mtr', name='OT_stage_1_
 OT_stage_2_X = xf28id1_Motor('XF:28ID1-ES{Det-Ax:X2}Mtr', name='OT_stage_2_X', labels=['positioners'])
 OT_stage_2_Y = xf28id1_Motor('XF:28ID1B-ES:1{Sample:Tbl-Ax:Y1}Mtr', name='OT_stage_2_Y', labels=['positioners'])
 
-broadside45_shifter = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter') 
-Multi_X = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X') 
+broadside45_shifter = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter')
+Multi_X = xf28id1_Motor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X')
 
 
 #Under 28ID Main: Bridge Motions
@@ -131,9 +131,9 @@ Spinnergo_X = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:X}Mtr', name='Spinnergo_X', l
 # Telescopic beamguide tube Y position/Defined by CHLin on 2025/08/25
 Spinnergo_Y = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Y}Mtr', name='Spinnergo_Y', labels=['positioners'])
 Spinnergo_Y = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Y}Mtr', name='Spinnergo_Y', labels=['positioners'])
-#Spinnergo_Z = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Z}Mtr', name='Spinnergo_Z', labels=['positioners']) 
+#Spinnergo_Z = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Z}Mtr', name='Spinnergo_Z', labels=['positioners'])
 
-#Beamstopper not on Detector (8/25/2025) 
+#Beamstopper not on Detector (8/25/2025)
 Bstop_TBL_Y = EpicsMotor('XF:28ID1B-ES{Stg:FTIR-Ax:Y}Mtr', name='Beam_stop_TBL2', labels=['positioners'])
 # Above two lines were modified by GK and MA on 01/24/2025
 Spinnergo_Ry = EpicsMotor('XF:28ID1B-ES{Stg:Smpl-Ax:Ry}Mtr', name='Spinnergo_Ry', labels=['positioners'])
@@ -152,8 +152,8 @@ ECS_An_th = EpicsMotor('XF:28ID1B-ES{ECS-Ax:Th2}Mtr', name='ECS_An_th', labels=[
 ECS_det1 = EpicsSignalRO(  'XF:28IDC-BI:1{IM:1}:C4_1' ,name='ECS_det1')
 
 #45-degree shifting motor on M6-grid, for use with hot air blower / cryostream with angled sample bracket
-# broadside45_shifter = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter') 
-# Multi_X = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X') 
+# broadside45_shifter = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='broadside45_shifter')
+# Multi_X = EpicsMotor('XF:28ID1B-ES{Smpl:Array-Ax:Horiz}Mtr', name='Multi_X')
 
 #NOx BOx x/y sample position
 noxbox_x = EpicsMotor('XF:28ID1B-ES{NOx-Ax:X}Mtr', name='noxbox_x')
