@@ -1220,7 +1220,7 @@ def scan_shifter_saxs(
     xpd_configuration['area_det']=pe2c
 
     print('Since using PE2, set frame_acq_time = 0.2 s')
-    glbl['frame_acq_time']=.2
+    glbl['frame_acq_time']=.1
 
     def yn_question(q):
         return input(q).lower().strip()[0] == "y"
