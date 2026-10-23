@@ -4,10 +4,14 @@ from ophyd import Signal
 from ophyd import (SingleTrigger,
                    TIFFPlugin, ImagePlugin, DetectorBase,
                    HDF5Plugin, AreaDetector, EpicsSignal, EpicsSignalRO,
-                   ROIPlugin, TransformPlugin, ProcessPlugin, PilatusDetector, 
+                   ROIPlugin, TransformPlugin, ProcessPlugin, 
 		           PilatusDetectorCam, StatsPlugin)
+from ophyd_async.epics.adpilatus import PilatusDetector
+from ophyd_async.core import soft_signal_rw
+from ophyd_async.epics.adcore import ADWriterFactory, ADBaseDataType, ADHDFDataLogic, ADMultipartDataLogic
 from ophyd.areadetector.filestore_mixins import FileStoreTIFFIterativeWrite, resource_factory
 from ophyd.areadetector import EpicsSignalWithRBV
+from nslsii.ophyd_async.providers import NSLS2PathProvider
 
 from nslsii.ad33 import SingleTriggerV33, StatsPluginV33
 from collections import OrderedDict
@@ -135,11 +139,27 @@ class PilatusV33(SingleTriggerV33, PilatusDetector):
         # self.cam.num_images = num_images
 
 
-pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
-# pilatus1.tiff.read_attrs = []
-pilatus1.tiff.kind = 'normal'
-pilatus1.tiff.update_paths()
+# pilatus1 = PilatusV33('XF:28ID1-ES{Det:Pilatus}', name='pilatus-1')
+# # pilatus1.tiff.read_attrs = []
+# pilatus1.tiff.kind = 'normal'
+# pilatus1.tiff.update_paths()
 
+path_provider = NSLS2PathProvider(RE.md)
+writer_factory = ADWriterFactory.tiff(path_provider)
+
+class FixedPilatusDetector(PilatusDetector):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.actual_data_type = soft_signal_rw(ADBaseDataType, ADBaseDataType.INT32)
+        for data_logic in self._data_logics:
+            if isinstance(data_logic, (ADHDFDataLogic, ADMultipartDataLogic)):
+                data_logic.array_description.data_type_signal = (
+                    self.actual_data_type
+                )
+
+with init_devices():
+    pilatus1 = FixedPilatusDetector("XF:28ID1-ES{Det:Pilatus}", writer_factory, name="pilatus-1")
 
 
 #for looking at pilatus data

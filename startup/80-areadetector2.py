@@ -317,10 +317,10 @@ pe2.tiff.update_paths()
 
 
 #temporary disable detector for PE2 testing -MA 11/25/19 and 12/09/21
-#pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
-#                            read_attrs=['tiff', 'stats1.total'],
-#                             plugin_name='tiff')
-#pe1c.tiff.update_paths()
+pe1c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE1}', name='pe1',
+                            read_attrs=['tiff', 'stats1.total'],
+                             plugin_name='tiff')
+pe1c.tiff.update_paths()
 ################
 # Disabled for startup after netowrk update 2025/10/29 chl
 pe2c = PerkinElmerContinuous('XF:28ID1-ES{Det:PE2}', name='pe2',

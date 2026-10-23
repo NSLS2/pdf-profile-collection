@@ -35,7 +35,7 @@ if xpdacq_version < (1, 1, 0):
 
     # ## Add by CHLin on 2025/08/19 for testing
     # pe1c = pe2c
-    configure_device(area_det=pilatus1, shutter=fs,
+    configure_device(area_det=pe1c, shutter=fs,
                     temp_controller=eurotherm, #changed from None to eurotherm on 3/22/19 - DPO
                     db=db,
                     filter_bank=fb,
@@ -125,7 +125,7 @@ else:
     # HOME directory will be changed to the one in glbl
     ui = UserInterface(
         # area_dets=[pe1c, pe2c, pilatus1],
-        area_dets=[pilatus1],
+        area_dets=[pe1c],
         # area_dets=[pe1c, pe2c, pilatus1],
         det_zs=[Det_1_Z.user_setpoint, Det_2_Z.user_setpoint],
         shutter=fs,

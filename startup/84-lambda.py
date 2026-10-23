@@ -7,9 +7,6 @@ from ophyd_async.epics.adcore import ADWriterFactory
 from nslsii.ophyd_async.providers import NSLS2PathProvider
 
 
-path_provider = NSLS2PathProvider(RE.md)
-writer_factory = ADWriterFactory.tiff(path_provider)
-
 try:
     with init_devices():
         # lambda1 = XSPDetector("XF:28ID1-ES{Lambda-Det:1}", NSLS2PathProvider(RE.md), writer_type=ADWriterType.TIFF, name="lambda1")
