@@ -4,7 +4,6 @@ file_loading_timer.start()
 from pdftools.detectors import XSPDetector
 from ophyd_async.core import init_devices
 from ophyd_async.epics.adcore import ADWriterFactory
-from nslsii.ophyd_async.providers import NSLS2PathProvider
 
 
 try:

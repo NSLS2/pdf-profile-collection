@@ -17,7 +17,7 @@ import datetime
 import os
 
 try:
-    from ophyd_async.core import TriggerInfo 
+    from ophyd_async.core import TriggerInfo, DetectorTrigger
 except ModuleNotFoundError:
     pass
 
@@ -303,37 +303,6 @@ def repeat_count(detectors, num=1, delay=None, *, per_shot=None, md=None):
 
 
 
-def _configure_frame_acq_time(area_det, new_frame_acq_time):
-    """function to configure frame acquire time of area detector
-        Adeapted from xpdacq.xpdacq_conf.configure_frame_acq_time
-        by CHL 2026/03/12
-    """
-
-    if hasattr(area_det, "cam"):
-        driver_io = area_det.cam
-    else:
-        driver_io = area_det.driver
-
-    # stop acquisition
-    yield from bps.mv(driver_io.acquire, 0)
-    yield from bps.sleep(1)
-
-    if hasattr(area_det, 'number_of_sets'):
-        yield from bps.mv(area_det.number_of_sets, 1)
-    
-    # yield from bps.mv(driver_io.acquire_time, new_frame_acq_time)
-    
-    # extra wait time for device to set
-    yield from bps.sleep(1)
-    yield from bps.mv(driver_io.acquire, 1)
-    
-    print(
-        "INFO: area detector has been configured to new "
-        "acquisition time (time per frame)  = {}s".format(new_frame_acq_time)
-    )
-
-
-
 
 ## A pre-plan to configure the area detector
 def _pre_plan(dets, exposure, frame_acq_time=None):
@@ -544,35 +513,6 @@ def jog_pila2(dets, exposure, motor, start, stop, *, num=1, md={}):
 
 
 
-def jog_loop(exposure, motor, start, stop):
-
-    yield from bps.mv(motor, start)  # go to initial position
-
-    motor_max_velocity = 5 #motor.VMAX.get() # read from ophyd object
-    jog_distance = motor_max_velocity * exposure
-    print(f'{jog_distance = } mm/s')
-    sample_distance = abs(stop-start)
-    print(f'{sample_distance = } mm')
-    num_jogging = int(jog_distance/sample_distance)
-
-    @bpp.stage_decorator([motor])
-    def inner_jog(motor=motor, start=start, stop=stop, jog_distance=jog_distance, sample_distance=sample_distance):
-        gp = short_uid("rocker")
-        for i in range(num_jogging):
-        # while jog_distance-sample_distance > 0:
-            yield from bps.abs_set(motor, stop, )  # set motor to move towards end
-            yield from bps.abs_set(motor, start, )  # go to initial position
-            # yield from bps.mv(motor, start, )  # set motor to move towards end
-
-            jog_distance -= sample_distance
-            print(f'{jog_distance = } mm/s')
-
-        yield from bps.wait(group=gp)
-
-    yield from inner_jog()  # set motor to move towards end
-
-
-
 
 
 def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
@@ -639,6 +579,11 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
             @bpp.subs_decorator(table)
             def _inner_trigger()-> MsgGenerator:
                 for det in dets:
+
+                    if "lambda" in det.name or "pilatus" in det.name:
+                        trigger_info = TriggerInfo(livetime=exposure,)
+                        yield from bps.prepare(det, trigger_info, wait=True)
+                    
                     yield from bps.trigger(det, wait=True)
                     yield from bps.create(name=stream_name)
                     yield from bps.read(det)
@@ -736,12 +681,14 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
                 gp = short_uid("rocker")
                 yield from inner_jog(gp, motor=jogging[0], start=jogging[1], stop=jogging[2])
 
-            if det.name is "lambda1":
-                trigger_info = TriggerInfo(livetime=exposure,)
+            if "lambda" in det.name or "pilatus" in det.name:
+                trigger_info = TriggerInfo(livetime=exposure, )
                 yield from bps.prepare(det, trigger_info, wait=True)
+            
             yield from bps.mv(fs, 1)
             print(f'\nOpen shutter to start the run....')
 
+            # yield from bps.wait(group="prepare")
             yield from bps.trigger(det, wait=True)
             yield from bps.create(name=stream_name)
             yield from bps.read(det)
@@ -768,13 +715,20 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
         return (yield from trigger_and_wait())
 
 
-def simple_trigger(dets, md=None, save_run=True, open_fs=True, close_fs=True):
+
+def simple_trigger(dets, exposure, md=None, save_run=True, open_fs=True, close_fs=True):
+    sp_md = yield from _pre_plan(dets, exposure, frame_acq_time=0.1)
     _md = md or {}
+    _md.update(sp_md)
     @bpp.stage_decorator(dets)
     @bpp.run_decorator(md=_md)
     def trigger_and_wait() -> MsgGenerator:
 
         for det in dets:
+
+            if "lambda" in det.name or "pilatus" in det.name:
+                trigger_info = TriggerInfo(livetime=exposure,)
+                yield from bps.prepare(det, trigger_info, wait=True)
 
             if open_fs:
                 yield from bps.mv(fs, 1)
@@ -803,10 +757,16 @@ def simple_trigger(dets, md=None, save_run=True, open_fs=True, close_fs=True):
 
 
 def just_trigger(dets, wait=True, open_fs=False, close_fs=False):
+    yield from _pre_plan(dets, 0.1, frame_acq_time=0.1)
+
     @bpp.stage_decorator(dets)
     def trigger_and_wait() -> MsgGenerator:
 
         for det in dets:
+
+            if "lambda" in det.name or "pilatus" in det.name:
+                trigger_info = TriggerInfo(livetime=exposure,)
+                yield from bps.prepare(det, trigger_info, wait=True)
 
             if open_fs:
                 yield from bps.mv(fs, 1)
