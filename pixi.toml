@@ -40,6 +40,7 @@ ophyd-async = ">=0.21.3, <0.22"
 #pdfstream = { git = "https://github.com/NSLS-II-PDF/pdfstream.git", rev="v0.5.x-xpd-datasec" }
 pdfstream = { git = "https://github.com/NSLS-II-PDF/pdfstream.git", rev="v0.5.x" }
 pdftools = { git = "https://github.com/NSLS2/pdftools", rev="main" }
+p4p = "*"
 
 [feature.qs.dependencies]
 bluesky-queueserver = "*"

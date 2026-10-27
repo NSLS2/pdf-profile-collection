@@ -18,6 +18,7 @@ import os
 
 try:
     from ophyd_async.core import TriggerInfo, DetectorTrigger
+    from p4p.client.thread import Context
 except ModuleNotFoundError:
     pass
 
@@ -1462,12 +1463,20 @@ def scan_shifter_saxs2(
 
 
 
-def _read_pilatus_int(uid):
-    from tiled.client import from_profile
-    tiled_client = from_profile('pdf')
-    tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
-    run = tiled_client[uid]
-    img = np.float32(getattr(run, 'primary').read()['pilatus-1_image'].to_numpy()[0][0])
+
+def _read_pilatus_int(uid, use_tiled=False):
+    if use_tiled:
+        # tiled_client = from_profile('pdf')
+        tiled_client = from_uri('https://tiled.nsls2.bnl.gov')['pdf']['migration']
+        # tiled_client.context.http_client.headers['tiled-qos'] = 'acquisition'
+        run = tiled_client[uid]
+        # img = np.float32(getattr(run, 'primary').read()['pilatus-1_image'].to_numpy()[0][0])
+        img = np.float32(getattr(run, 'primary').read()['pilatus-1'].to_numpy()[0])
+   
+    else:
+        ctx = Context('pva')
+        pilatus_frame_PV = "XF:28ID1-ES{Det:Pilatus}Pva1:Image"
+        img = ctx.get(pilatus_frame_PV)
 
     return float(img.sum())
 
@@ -1503,7 +1512,7 @@ def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
             return None
 
         if use_det == True:
-            uid,  = RE(simple_trigger([pilatus1], open_fs=False, close_fs=False))
+            uid,  = RE(simple_trigger([pilatus1], 0.1, open_fs=False, close_fs=False))
             my_int = _read_pilatus_int(uid)
             print(f"{my_int = }")
 
