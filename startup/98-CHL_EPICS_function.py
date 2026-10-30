@@ -633,6 +633,7 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
 
             yield from _inner_trigger()
 
+
         def _trigger_3pos():
             nonlocal jogging
             for i in range(len(det_x_pos)):
@@ -650,8 +651,17 @@ def tirgger_pila_3pos(dets, exposure, md, jogging=[], user_config={}):
                 yield from bps.mv(fs, 0)
                 print(f'Finish Pilatus position {i} and close shutter\n')
 
+                try:
+                    VMAX = jogging[0].VMAX.get()
+                    jogging[0].velocity.put(VMAX)
+                    print(f"Reset veloicty of {jogging[0].name}")
+                except (IndexError, AttributeError):
+                    pass
+
         yield from _trigger_3pos()
 
+
+    
     return (yield from _RE_inner(dets, motors, det_x_pos, det_y_pos))
 
 
@@ -734,6 +744,13 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
             ## reset frame acquisition time to 0.1 sec for pe detectors
             if "pe" in det.name:
                 yield from _pre_plan([det], 5.0, frame_acq_time=0.1)
+    
+        try:
+            VMAX = jogging[0].VMAX.get()
+            jogging[0].velocity.put(VMAX)
+            print(f"Reset veloicty of {jogging[0].name}")
+        except (IndexError, AttributeError):
+            pass
 
     if not no_dark:
         return (yield from periodic_dark(trigger_and_wait()))
