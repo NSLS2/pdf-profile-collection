@@ -76,7 +76,6 @@ tiled_inserter = TiledInserter(
     "pdf",
     backup_directory=f"{TILED_BACKUP_ROOT}/sql")
 tiled_inserter = BufferingWrapper(tiled_inserter)  # in-process queue: RE never blocks
-RE.subscribe(tiled_inserter)
 
 # See docstring for nslsii.configure_base() for more details
 # this command takes away much of the boilerplate for settting up a profile
@@ -93,6 +92,8 @@ nslsii.configure_base(
     redis_port=6380,
     redis_ssl=True
 )   
+
+RE.subscribe(tiled_inserter)
 
 
 # Added by CHL on 2025/11/18 to remove items from RE.md since too much non-necessary info in redis
