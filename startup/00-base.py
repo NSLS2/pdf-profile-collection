@@ -9,12 +9,17 @@ import warnings
 from bluesky.utils import ts_msg_hook
 from bluesky_queueserver import is_re_worker_active
 from bluesky.callbacks.tiled_writer import TiledWriter
+from bluesky.callbacks.buffer import BufferingWrapper
+from bluesky_tiled_plugins import TiledInserter
 from tiled.client import from_profile, from_uri
 import os
 from IPython import get_ipython
 from IPython.terminal.prompts import Prompts, Token
 
 from ophyd.signal import EpicsSignalBase
+
+
+TILED_BACKUP_ROOT = "/nsls2/data/pdf/shared/config/bluesky/tiled_backup"
 
 
 class FileLoadingTimer():
@@ -66,33 +71,17 @@ elif local_tiled:
     tiled_writing_client = from_uri(t_serv.uri)
     tiled_reading_client = c = from_uri(t_serv.uri)
 
-class TiledInserter:
-    name = 'pdf'
-    def insert(self, name, doc):
-        ATTEMPTS = 20
-        error = None
-        for attempt in range(ATTEMPTS):
-            try:
-                tiled_writing_client.post_document(name, doc)
-            except Exception as exc:
-                print("Document saving failure:", repr(exc))
-                error = exc
-            else:
-                break
-            time.sleep(2)
-        else:
-            # Out of attempts
-            raise error
-
-tiled_inserter = TiledInserter()
-
+tiled_inserter = TiledInserter(
+    tiled_writing_client,
+    "pdf",
+    backup_directory=f"{TILED_BACKUP_ROOT}/sql")
+buffered_tiled_inserter = BufferingWrapper(tiled_inserter)  # in-process queue: RE never blocks
 
 # See docstring for nslsii.configure_base() for more details
 # this command takes away much of the boilerplate for settting up a profile
 # (such as setting up best effort callbacks etc)
 nslsii.configure_base(
     get_ipython().user_ns,
-    tiled_inserter,
     pbar=True,
     bec=True,
     magics=True,
@@ -103,6 +92,8 @@ nslsii.configure_base(
     redis_port=6380,
     redis_ssl=True
 )   
+
+RE.subscribe(buffered_tiled_inserter)
 
 
 # Added by CHL on 2025/11/18 to remove items from RE.md since too much non-necessary info in redis
