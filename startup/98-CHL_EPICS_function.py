@@ -758,7 +758,11 @@ def trigger_areaDet(dets, exposure, stream_name, md, no_dark, jogging=[], frame_
         return (yield from trigger_and_wait())
 
 
-def simple_trigger(dets, md=None, save_run=True, open_fs=True, close_fs=True):
+def simple_trigger(dets, exposure=0.1, md=None, save_run=True, open_fs=True, close_fs=True, re_configure=True):
+    if re_configure:
+        sp_md = yield from _pre_plan(dets, exposure)
+        sp_md["sp_plan_name"] = "simple_trigger",
+        _md.update(sp_md)
     _md = md or {}
     @bpp.stage_decorator(dets)
     @bpp.run_decorator(md=_md)
@@ -1354,7 +1358,7 @@ def scan_shifter_saxs2(
     min_height=0.02,
     min_dist=5,
     peak_rad=1.5,
-    use_det=True,
+    complete_run=False,
     abs_data = False,
     oset_data = 0.0,
     return_to_start = True,
@@ -1399,7 +1403,8 @@ def scan_shifter_saxs2(
             return None
 
         pos_list, I_list = _motor_move_scan_shifter_pos2(
-            motor=motor, xmin=xmin, xmax=xmax, numx=numx,)
+            motor=motor, xmin=xmin, xmax=xmax, numx=numx, complete_run=complete_run, 
+            )
     else:
         print ('recovering last scan from redis...')
         return_to_start = False
@@ -1502,7 +1507,21 @@ def _read_pilatus_int(uid):
     return float(img.sum())
 
 
-def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
+## use pliatus to get sample position
+##TODO: use epics-base to retrive total counts from Pilatus
+## https://github.com/epics-base/p4p
+'''
+from p4p.client.thread import Context
+ctx = Context('pva')
+pilatus_frame_PV = "XF:28ID1-ES{Det:Pilatus}Pva1:Image"
+frame = ctx.get(pilatus_frame_PV)
+'''
+from p4p.client.thread import Context
+
+ctx = Context('pva')
+pilatus_frame_PV = "XF:28ID1-ES{Det:Pilatus}Pva1:Image"
+
+def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx, complete_run=True):
     from epics import caget
     #ensure shutter is closedi
     print ('closing shutter')
@@ -1521,7 +1540,7 @@ def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
     time.sleep(1)
     plt.ion()
     fig1, ax1 = plt.subplots()
-    use_det = True
+    # complete_run = True
     temp_pos_list = []
     temp_I_list = []
     for i, pos in enumerate(pos_list):
@@ -1532,13 +1551,16 @@ def _motor_move_scan_shifter_pos2(motor, xmin, xmax, numx):
             print("well, something bad happened")
             return None
 
-        if use_det == True:
-            uid,  = RE(simple_trigger([pilatus1], open_fs=False, close_fs=False))
+        if complete_run:
+            uid,  = RE(simple_trigger([pilatus1], open_fs=False, close_fs=False, re_configure=False))
             my_int = _read_pilatus_int(uid)
-            print(f"{my_int = }")
+            print(f"Reading total counts from tiled, {my_int = }")
 
         else:
-            my_int = float(caget("XF:28ID1B-OP{Det:1-Det:2}Amp:bkgnd"))
+            RE(just_trigger([pilatus1], open_fs=False, close_fs=False))
+            frame = ctx.get(pilatus_frame_PV)
+            my_int = float(frame.sum())
+            print(f"Reading total counts from frame, {my_int = }")
 
         temp_I_list.append(my_int)
         temp_pos_list.append(pos)
