@@ -785,7 +785,7 @@ def just_trigger(dets, wait=True, open_fs=False, close_fs=False):
         for det in dets:
 
             if "lambda" in det.name or "pilatus" in det.name:
-                trigger_info = TriggerInfo(livetime=exposure,)
+                trigger_info = TriggerInfo(livetime=0.1,)
                 yield from bps.prepare(det, trigger_info, wait=True)
 
             if open_fs:
